@@ -2,8 +2,8 @@
   "zone_1": {
     "id": "zone_1",
     "name": "Gate A (North Entrance)",
-    "crowd_density": 42,
-    "gate_queue_time_mins": 15,
+    "crowd_density": 57,
+    "gate_queue_time_mins": 10,
     "weather": {
       "temp_c": 24,
       "condition": "Sunny",
@@ -17,7 +17,7 @@
     "id": "zone_2",
     "name": "Gate B (South Entrance)",
     "crowd_density": 61,
-    "gate_queue_time_mins": 12,
+    "gate_queue_time_mins": 3,
     "weather": {
       "temp_c": 24,
       "condition": "Sunny",
@@ -30,7 +30,7 @@
   "zone_3": {
     "id": "zone_3",
     "name": "Concourse West (Food & Drinks)",
-    "crowd_density": 64,
+    "crowd_density": 65,
     "gate_queue_time_mins": 0,
     "weather": {
       "temp_c": 22,
@@ -58,7 +58,7 @@
   "zone_5": {
     "id": "zone_5",
     "name": "Grandstand North",
-    "crowd_density": 54,
+    "crowd_density": 43,
     "gate_queue_time_mins": 0,
     "weather": {
       "temp_c": 24,
@@ -72,7 +72,7 @@
   "zone_6": {
     "id": "zone_6",
     "name": "Grandstand South",
-    "crowd_density": 71,
+    "crowd_density": 70,
     "gate_queue_time_mins": 0,
     "weather": {
       "temp_c": 24,

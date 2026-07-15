@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Smooth numeric counter animation
 function AnimatedNumber({ value }) {
@@ -35,17 +35,16 @@ function AnimatedNumber({ value }) {
 
 export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefersReduced }) {
   const getDensityColor = (density) => {
-    if (density >= 75) return 'border-red-500/25 bg-red-950/[0.03] text-rose-200 hover:border-red-500/50';
-    if (density >= 60) return 'border-amber-500/25 bg-orange-950/[0.02] text-orange-200 hover:border-orange-500/50';
-    if (density >= 40) return 'border-green-600/20 bg-green-950/[0.02] text-emerald-250 hover:border-green-600/40';
-    // Muted slate for calm/normal state
-    return 'border-white/[0.03] bg-white/[0.01] text-slate-400 hover:border-white/[0.08]';
+    if (density >= 75) return 'border-red-500/20 bg-red-950/[0.02] text-rose-250 hover:border-red-500/40';
+    if (density >= 60) return 'border-orange-500/20 bg-orange-950/[0.015] text-orange-255 hover:border-orange-500/40';
+    if (density >= 40) return 'border-teal-500/20 bg-teal-950/[0.01] text-teal-200 hover:border-teal-500/40'; // World cup green-teal
+    return 'border-white/[0.03] bg-white/[0.005] text-slate-450 hover:border-white/[0.08]';
   };
 
   const getPercentageBarColor = (density) => {
-    if (density >= 75) return 'from-red-600 to-rose-500';
-    if (density >= 60) return 'from-amber-500 to-orange-500';
-    if (density >= 40) return 'from-green-600 to-emerald-500'; // Pitch green World Cup color
+    if (density >= 75) return 'from-red-500 to-rose-600';
+    if (density >= 60) return 'from-orange-500 to-amber-500';
+    if (density >= 40) return 'from-teal-650 to-emerald-500'; // Green-teal gradient
     return 'from-slate-700 to-slate-500';
   };
 
@@ -53,14 +52,14 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
     if (density >= 75) return 'CRITICAL';
     if (density >= 60) return 'CONGESTED';
     if (density >= 40) return 'OPTIMAL';
-    return 'NORMAL';
+    return 'CALM';
   };
 
-  const getSVGColor = (density, isSelected) => {
-    if (density >= 75) return { fill: 'rgba(239, 68, 68, 0.25)', stroke: 'rgb(239, 68, 68)', strokeWidth: isSelected ? 3 : 1.5 };
-    if (density >= 60) return { fill: 'rgba(249, 115, 22, 0.15)', stroke: 'rgb(249, 115, 22)', strokeWidth: isSelected ? 3 : 1.5 };
-    if (density >= 40) return { fill: 'rgba(22, 163, 74, 0.12)', stroke: 'rgb(22, 163, 74)', strokeWidth: isSelected ? 3 : 1.5 };
-    return { fill: 'rgba(148, 163, 184, 0.05)', stroke: 'rgba(148, 163, 184, 0.25)', strokeWidth: isSelected ? 3 : 1 };
+  const getDensityTheme = (density) => {
+    if (density >= 75) return { color: '#EF4444', label: 'CRITICAL', dot: 'bg-red-500 animate-pulse' };
+    if (density >= 60) return { color: '#F97316', label: 'CONGESTED', dot: 'bg-orange-500 animate-pulse' };
+    if (density >= 40) return { color: '#14B8A6', label: 'OPTIMAL', dot: 'bg-teal-500' };
+    return { color: '#64748B', label: 'CALM', dot: 'bg-slate-500' };
   };
 
   // Framer Motion variants
@@ -81,96 +80,199 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
     }
   };
 
+  // Scroll Reveal Animations in the style of Google Antigravity (blur + slide)
+  const revealVariants = {
+    hidden: { opacity: 0, y: prefersReduced ? 0 : 20, filter: prefersReduced ? "blur(0px)" : "blur(6px)" },
+    show: { 
+      opacity: 1, 
+      y: 0, 
+      filter: "blur(0px)",
+      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } 
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full contain-layout-region">
-      
-      {/* SIGNATURE VISUAL MOMENT: STADIUM-BOWL OUTLINE HEATMAP */}
-      <div className="mb-6 flex justify-center bg-slate-950/40 p-4 rounded-2xl border border-white/[0.03] relative overflow-hidden">
-        {/* Decorative inner pitch glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[190px] bg-green-550/5 blur-[50px] rounded-full pointer-events-none"></div>
+    <motion.div 
+      variants={revealVariants}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-40px" }}
+      className="flex flex-col h-full contain-layout-region"
+    >
+      {/* Header Info */}
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        <div>
+          <h2 className="text-sm font-extrabold tracking-widest text-slate-400 flex items-center gap-2 uppercase font-display">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-550"></span>
+            </span>
+            LIVE STADIUM HEATMAP
+          </h2>
+          <p className="text-[10px] text-slate-500 mt-0.5">Click a zone to inspect detailed sensor diagnostics and live feeds</p>
+        </div>
 
-        <svg viewBox="0 0 600 340" className="w-full max-w-[480px] h-auto z-10">
-          {/* Soccer Pitch at the Center */}
-          <g opacity="0.85">
-            <rect x="250" y="135" width="100" height="70" fill="#14532D" stroke="rgba(255,255,255,0.4)" strokeWidth="1" rx="2" />
-            {/* Center Circle */}
-            <circle cx="300" cy="170" r="16" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-            {/* Midfield Line */}
-            <line x1="300" y1="135" x2="300" y2="205" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-            {/* Goal Boxes */}
-            <rect x="250" y="152" width="12" height="36" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-            <rect x="338" y="152" width="12" height="36" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-          </g>
+        {/* Legend */}
+        <div className="flex flex-wrap gap-3.5 text-[9px] font-black tracking-widest text-slate-550 bg-slate-950/80 p-2 py-1.5 rounded-full border border-white/[0.04] shadow-inner">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-slate-500"></span> CALM
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-teal-500"></span> OPTIMAL
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-orange-500"></span> HIGH
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> CRITICAL
+          </div>
+        </div>
+      </div>
 
-          {/* Stadium Zones */}
-          {Object.values(stadiumData).map((zone) => {
-            const isSelected = selectedZone?.id === zone.id;
-            const style = getSVGColor(zone.crowd_density, isSelected);
-            const isCritical = zone.crowd_density >= 75;
+      {/* SIGNATURE VISUAL MOMENT: ORGANIC STADIUM SHAPE WITH RADIAL GRADIENTS */}
+      <div className="mb-6 flex justify-center bg-slate-950/50 p-6 rounded-3xl border border-white/[0.03] relative overflow-hidden">
+        {/* Soft Background Stadium Orb */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[180px] bg-teal-950/10 blur-[60px] rounded-full pointer-events-none"></div>
 
-            // Map polygon coordinates for each zone
-            let points = "";
-            let textX = 300;
-            let textY = 170;
+        <div className="relative w-full max-w-[480px]">
+          <svg viewBox="0 0 600 340" className="w-full h-auto z-10 relative">
+            <defs>
+              {/* Glowing Filters */}
+              <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="10" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              
+              {/* Gradients representing Stadium Fields */}
+              <radialGradient id="pitch-glow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#14B8A6" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#0F5132" stopOpacity="0" />
+              </radialGradient>
+            </defs>
 
-            if (zone.id === 'zone_1') {
-              // Gate A (North Entrance)
-              points = "180,45 420,45 390,85 210,85";
-              textY = 66;
-            } else if (zone.id === 'zone_2') {
-              // Gate B (South Entrance)
-              points = "210,255 390,255 420,295 180,295";
-              textY = 280;
-            } else if (zone.id === 'zone_3') {
-              // Concourse West (Left Wing)
-              points = "75,80 180,105 180,235 75,260 45,170";
-              textX = 115;
-            } else if (zone.id === 'zone_4') {
-              // Concourse East (Right Wing)
-              points = "525,80 420,105 420,235 525,260 555,170";
-              textX = 485;
-            } else if (zone.id === 'zone_5') {
-              // Grandstand North (Inner Top)
-              points = "220,100 380,100 350,130 250,130";
-              textY = 116;
-            } else if (zone.id === 'zone_6') {
-              // Grandstand South (Inner Bottom)
-              points = "250,210 350,210 380,240 220,240";
-              textY = 227;
-            }
+            {/* Soccer Pitch Outline */}
+            <g opacity="0.6">
+              <rect x="240" y="135" width="120" height="70" fill="url(#pitch-glow)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" rx="4" />
+              <circle cx="300" cy="170" r="18" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+              <line x1="300" y1="135" x2="300" y2="205" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+            </g>
 
-            return (
-              <g 
-                key={zone.id} 
-                className="cursor-pointer group" 
-                onClick={() => onSelectZone(zone)}
-              >
-                <polygon
-                  points={points}
-                  fill={style.fill}
-                  stroke={style.stroke}
-                  strokeWidth={style.strokeWidth}
-                  className={`transition-all duration-300 ${
-                    isCritical ? 'animate-[pulse_1.5s_infinite]' : ''
-                  } group-hover:fill-white/10`}
-                  style={{
-                    filter: isSelected ? `drop-shadow(0 0 6px ${style.stroke})` : 'none'
-                  }}
-                />
-                <text
-                  x={textX}
-                  y={textY}
-                  textAnchor="middle"
-                  className={`text-[9px] font-black pointer-events-none fill-slate-400 group-hover:fill-slate-100 tracking-wider font-display transition-colors ${
-                    isSelected ? 'fill-slate-100' : ''
-                  }`}
+            {/* Stadium Zones - Soft Bezier curves for organic stadium mapping */}
+            {Object.values(stadiumData).map((zone) => {
+              const isSelected = selectedZone?.id === zone.id;
+              const theme = getDensityTheme(zone.crowd_density);
+              const isCritical = zone.crowd_density >= 75;
+              const isCongested = zone.crowd_density >= 60;
+
+              // Bezier Curves representing sectors of a rounded stadium
+              let pathData = "";
+              if (zone.id === 'zone_1') {
+                // North Entrance Gate A (curved arch)
+                pathData = "M 190,55 Q 300,10 410,55 L 380,85 Q 300,50 220,85 Z";
+              } else if (zone.id === 'zone_2') {
+                // South Entrance Gate B
+                pathData = "M 220,255 Q 300,290 380,255 L 410,285 Q 300,330 190,285 Z";
+              } else if (zone.id === 'zone_3') {
+                // Left Wing Concourse West
+                pathData = "M 80,90 Q 150,115 175,230 Q 80,250 55,170 Z";
+              } else if (zone.id === 'zone_4') {
+                // Right Wing Concourse East
+                pathData = "M 520,90 Q 450,115 425,230 Q 520,250 545,170 Z";
+              } else if (zone.id === 'zone_5') {
+                // Grandstand North (Inner Top)
+                pathData = "M 210,95 L 390,95 Q 340,125 210,125 Z";
+              } else if (zone.id === 'zone_6') {
+                // Grandstand South (Inner Bottom)
+                pathData = "M 210,215 Q 340,215 390,245 L 210,245 Z";
+              }
+
+              // Glow configurations depending on congestion
+              const glowOpacity = isCritical ? 0.45 : isCongested ? 0.25 : 0.05;
+              const hoverGlow = isSelected ? 0.6 : 0.2;
+
+              return (
+                <g 
+                  key={zone.id} 
+                  className="cursor-pointer group" 
+                  onClick={() => onSelectZone(zone)}
                 >
-                  {zone.id === 'zone_1' ? 'GATE A' : zone.id === 'zone_2' ? 'GATE B' : zone.id === 'zone_3' ? 'CONCOURSE W' : zone.id === 'zone_4' ? 'CONCOURSE E' : zone.id === 'zone_5' ? 'GRANDSTAND N' : 'GRANDSTAND S'}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                  {/* Glowing background duplicate path */}
+                  {(isCongested || isSelected) && (
+                    <motion.path
+                      d={pathData}
+                      fill={theme.color}
+                      opacity={glowOpacity}
+                      filter="url(#glow-effect)"
+                      animate={isCritical && !prefersReduced ? { opacity: [glowOpacity * 0.5, glowOpacity, glowOpacity * 0.5] } : {}}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="pointer-events-none"
+                    />
+                  )}
+
+                  {/* Top transparent colored interactive segment */}
+                  <path
+                    d={pathData}
+                    fill={theme.color}
+                    opacity={isSelected ? 0.22 : 0.08}
+                    stroke={theme.color}
+                    strokeWidth={isSelected ? 2 : 1}
+                    className="transition-all duration-300 group-hover:opacity-20"
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* HTML FLOATING PILL LABELS WITH BACKDROP BLUR */}
+          <div className="absolute inset-0 pointer-events-none">
+            {Object.values(stadiumData).map((zone) => {
+              const isSelected = selectedZone?.id === zone.id;
+              const theme = getDensityTheme(zone.crowd_density);
+
+              let style = {};
+              let name = "";
+              if (zone.id === 'zone_1') {
+                style = { top: '23%', left: '50%' };
+                name = "Gate A";
+              } else if (zone.id === 'zone_2') {
+                style = { top: '77%', left: '50%' };
+                name = "Gate B";
+              } else if (zone.id === 'zone_3') {
+                style = { top: '50%', left: '19%' };
+                name = "Concourse W";
+              } else if (zone.id === 'zone_4') {
+                style = { top: '50%', left: '81%' };
+                name = "Concourse E";
+              } else if (zone.id === 'zone_5') {
+                style = { top: '35%', left: '50%' };
+                name = "Grandstand N";
+              } else if (zone.id === 'zone_6') {
+                style = { top: '65%', left: '50%' };
+                name = "Grandstand S";
+              }
+
+              return (
+                <div
+                  key={zone.id}
+                  style={style}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center transition-all duration-300"
+                >
+                  <button
+                    onClick={() => onSelectZone(zone)}
+                    className={`pointer-events-auto rounded-full px-2.5 py-1 text-[8px] font-black tracking-widest uppercase flex items-center gap-1.5 backdrop-blur-md transition-all border duration-300 ${
+                      isSelected
+                        ? 'bg-slate-950 text-slate-100 border-white/20 shadow-lg shadow-black/40 scale-105'
+                        : 'bg-slate-950/80 text-slate-400 border-white/[0.04] hover:text-slate-200'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></span>
+                    {name}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Grid of Zones - Balanced Content Heights */}
@@ -184,9 +286,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
           const isSelected = selectedZone?.id === zone.id;
           const densityClass = getDensityColor(zone.crowd_density);
           const barColorClass = getPercentageBarColor(zone.crowd_density);
-          const statusLabel = getStatusLabel(zone.crowd_density);
-          const isCritical = zone.crowd_density >= 75;
-          const isCongested = zone.crowd_density >= 60 && zone.crowd_density < 75;
+          const theme = getDensityTheme(zone.crowd_density);
           const activeIncidents = (zone.incident_reports || []).filter(i => !i.resolved);
           const activeAlerts = zone.alerts || [];
 
@@ -198,32 +298,31 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
               whileHover={prefersReduced ? {} : { y: -3, scale: 1.01 }}
               whileTap={prefersReduced ? {} : { scale: 0.99 }}
               className={`glass-panel p-5 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col justify-between relative shadow-xl overflow-hidden min-h-[190px] ${densityClass} ${
-                isSelected ? 'ring-2 ring-green-600/80 border-transparent shadow-green-950/20' : ''
+                isSelected ? 'ring-2 ring-teal-500/50 border-transparent shadow-teal-950/20' : ''
               }`}
             >
               {/* Header inside card */}
               <div className="flex justify-between items-start gap-4 mb-2">
                 <div className="space-y-0.5 min-w-0 flex-1">
-                  <span className="text-[8px] font-extrabold tracking-widest text-slate-500 uppercase block font-mono">
+                  <span className="text-[8px] font-bold tracking-widest text-slate-500 uppercase block font-mono">
                     {zone.id.replace('_', ' ')}
                   </span>
-                  {/* WRAPPING CARD TITLE - NO CLIPPING */}
-                  <h3 className="text-xs font-black text-slate-100 leading-tight group-hover:text-green-500 transition-colors break-words font-display">
+                  <h3 className="text-xs font-black text-slate-100 leading-tight group-hover:text-teal-400 transition-colors break-words font-display">
                     {zone.name}
                   </h3>
                 </div>
 
                 {/* Highly visible alert badges */}
                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border tracking-wider shrink-0 ${
-                  isCritical
-                    ? 'bg-red-500/10 text-red-400 border-red-500/30 animate-[pulse_1.5s_infinite] shadow-[0_0_8px_rgba(239,68,68,0.2)]'
-                    : isCongested
-                    ? 'bg-orange-500/10 text-orange-400 border-orange-500/30 font-bold'
+                  zone.crowd_density >= 75
+                    ? 'bg-red-500/10 text-red-450 border-red-500/25 glow-pulse-red'
+                    : zone.crowd_density >= 60
+                    ? 'bg-orange-500/10 text-orange-400 border-orange-500/25'
                     : zone.crowd_density >= 40
-                    ? 'bg-green-600/10 text-green-400 border-green-600/20 font-medium'
-                    : 'bg-white/5 text-slate-550 border-white/5 font-normal'
+                    ? 'bg-teal-550/10 text-teal-400 border-teal-500/25 font-bold'
+                    : 'bg-white/5 text-slate-450 border-white/5 font-normal'
                 }`}>
-                  {statusLabel}
+                  {theme.label}
                 </span>
               </div>
 
@@ -233,18 +332,18 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                   <AnimatedNumber value={zone.crowd_density} />
                   <span className="text-lg font-bold text-slate-500 ml-0.5">%</span>
                 </span>
-                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider font-mono">Capacity</span>
+                <span className="text-[10px] text-slate-550 font-semibold uppercase tracking-wider font-mono">Capacity</span>
               </div>
 
-              {/* Progress gauge visual - Thicker Gradient Progress Bar */}
-              <div className="w-full h-2 bg-slate-950 rounded-full p-[1px] border border-white/5 mb-3">
+              {/* Thicker Gradient Progress Bar */}
+              <div className="w-full h-1.5 bg-slate-950 rounded-full p-[1px] border border-white/5 mb-3">
                 <div
                   className={`h-full rounded-full bg-gradient-to-r ${barColorClass} transition-all duration-700 ease-out`}
                   style={{ width: `${zone.crowd_density}%` }}
                 ></div>
               </div>
 
-              {/* Grid of Metadata - EQUAL DENSITY FOR ALL CARDS */}
+              {/* Grid of Metadata */}
               <div className="grid grid-cols-2 gap-2 text-left text-[10px] border-t border-white/[0.03] pt-2.5">
                 <div>
                   <span className="text-[8px] font-bold text-slate-550 block uppercase tracking-wider font-mono">
@@ -276,7 +375,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                     </span>
                   )}
                   {activeAlerts.length > 0 && (
-                    <span className="bg-green-700 text-white text-[7px] font-black px-1 py-0.25 rounded border border-green-600">
+                    <span className="bg-teal-700 text-white text-[7px] font-black px-1 py-0.25 rounded border border-teal-600">
                       📣 ALERT
                     </span>
                   )}
@@ -286,6 +385,6 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
           );
         })}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

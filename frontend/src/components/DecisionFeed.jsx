@@ -12,7 +12,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
     if (text.includes('alert') || text.includes('occupancy')) {
       return 'bg-orange-500/10 text-orange-400 border-orange-500/25';
     }
-    return 'bg-green-600/10 text-green-500 border-green-600/25';
+    return 'bg-teal-500/10 text-teal-400 border-teal-500/25';
   };
 
   const formatTimestamp = (isoString) => {
@@ -25,24 +25,24 @@ export default function DecisionFeed({ logs, prefersReduced }) {
   };
 
   return (
-    <div className="glass-panel p-5 rounded-2xl border border-white/[0.04] shadow-2xl h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/[0.03]">
-        <h2 className="text-xs font-black tracking-widest text-slate-400 flex items-center gap-2 uppercase font-display">
+      <div className="flex justify-between items-center mb-3.5 pb-2 border-b border-white/[0.03]">
+        <h2 className="text-[10px] font-black tracking-widest text-slate-500 flex items-center gap-2 uppercase font-mono">
           <span>🧠</span> AI DECISION LOGS
         </h2>
-        <span className="text-[9px] bg-slate-900 border border-white/5 text-slate-400 px-2 py-0.5 rounded-full font-bold">
+        <span className="text-[9px] bg-slate-950 border border-white/5 text-slate-400 px-2 py-0.5 rounded-full font-bold font-mono">
           {logs.length} Event{logs.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {/* Feed container */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[580px]">
+      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[380px]">
         {logs.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-650 py-16 text-center">
-            <span className="text-2xl mb-2 animate-pulse">📡</span>
+          <div className="h-full flex flex-col items-center justify-center text-slate-650 py-12 text-center">
+            <span className="text-2xl mb-1.5 opacity-60">📡</span>
             <p className="text-xs font-bold text-slate-500">Awaiting telemetry tick...</p>
-            <p className="text-[9px] text-slate-600 mt-1 uppercase tracking-widest font-semibold">Autonomous cycles run in background</p>
+            <p className="text-[9px] text-slate-650 mt-1 uppercase tracking-wider font-semibold font-mono">Autonomous reasoning active</p>
           </div>
         ) : (
           <div className="relative">
@@ -56,21 +56,21 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                   <motion.div
                     key={log.timestamp + index}
                     layout={prefersReduced ? false : "position"}
-                    initial={prefersReduced ? { opacity: 0 } : { opacity: 0, y: -20, scale: 0.95 }}
+                    initial={prefersReduced ? { opacity: 0 } : { opacity: 0, y: -15, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
                     transition={{
                       type: "spring",
                       stiffness: 110,
                       damping: 15,
                       mass: 0.8
                     }}
-                    className={`border rounded-xl p-4 mb-3.5 transition-all duration-300 ${
+                    className={`border rounded-xl p-3.5 mb-3 transition-all duration-300 ${
                       isIncident
-                        ? 'bg-red-950/[0.03] border-red-500/15 hover:border-red-500/35 shadow-sm shadow-red-950/20'
+                        ? 'bg-red-950/[0.02] border-red-500/10 hover:border-red-500/30'
                         : isAlert
-                        ? 'bg-orange-950/[0.02] border-orange-500/15 hover:border-orange-500/35 shadow-sm shadow-orange-950/20'
-                        : 'bg-white/[0.005] border-white/5 hover:border-white/10'
+                        ? 'bg-orange-950/[0.015] border-orange-500/10 hover:border-orange-500/30'
+                        : 'bg-white/[0.003] border-white/5 hover:border-white/10'
                     }`}
                   >
                     {/* Log Header */}
@@ -80,25 +80,25 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                           TICK TIME: {formatTimestamp(log.timestamp)} • UTC
                         </span>
                         <span className={`inline-block text-[8px] font-black tracking-wider px-2 py-0.5 rounded border ${getTriggerBadge(log.trigger)}`}>
-                          {isIncident ? '🚨 INCIDENT REPORT' : isAlert ? '⚠️ OVERCROWD ALERT' : '⚙️ ROUTINE SCAN'}
+                          {isIncident ? '🚨 INCIDENT' : isAlert ? '⚠️ OVERCROWD' : '⚙️ ROUTINE SCAN'}
                         </span>
                       </div>
                       <button
                         onClick={() => setExpandedLogIndex(isExpanded ? null : index)}
-                        className="text-[9px] text-cyan-400 hover:text-cyan-300 font-black focus-visible:ring-1 focus-visible:ring-cyan-500 rounded px-1.5 py-0.5 bg-slate-900 border border-white/5 transition-colors"
+                        className="text-[9px] text-teal-400 hover:text-teal-300 font-black focus-visible:ring-1 focus-visible:ring-teal-500/50 rounded px-1.5 py-0.5 bg-slate-950 border border-white/5 transition-colors"
                       >
                         {isExpanded ? 'Hide Trace' : 'View Trace'}
                       </button>
                     </div>
 
                     {/* Description */}
-                    <p className="text-xs font-black text-slate-350 leading-relaxed mb-2.5 border-l-2 border-white/5 pl-2.5">
+                    <p className="text-xs font-black text-slate-350 leading-relaxed mb-2.5 border-l border-white/5 pl-2">
                       {log.trigger}
                     </p>
 
                     {/* Reasoning terminal block */}
-                    <div className="bg-slate-950/80 border border-white/[0.03] rounded-lg p-3 text-[11px] leading-relaxed text-slate-300 font-mono selection:bg-cyan-500/20 shadow-inner">
-                      <span className="text-[9px] font-bold text-green-500 block mb-1">STADIUM_OS://COMMANDER/THOUGHTS:</span>
+                    <div className="bg-slate-950 border border-white/[0.03] rounded-lg p-3 text-[11px] leading-relaxed text-slate-350 font-mono selection:bg-teal-500/20 shadow-inner">
+                      <span className="text-[8px] font-bold text-teal-500 block mb-1">STADIUM_OS://COMMANDER/THOUGHTS:</span>
                       {log.reasoning}
                     </div>
 
@@ -113,7 +113,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                           className="overflow-hidden"
                         >
                           <div className="mt-4 pt-3.5 border-t border-white/[0.04] space-y-3">
-                            <h4 className="text-[9px] font-black text-slate-500 tracking-widest uppercase">
+                            <h4 className="text-[8px] font-black text-slate-655 tracking-widest uppercase">
                               🛠️ RUNTIME TOOL EXECUTIONS ({log.tools_called.length})
                             </h4>
                             {log.tools_called.length === 0 ? (
@@ -123,7 +123,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                                 {log.tools_called.map((tool, tIdx) => (
                                   <div key={tIdx} className="bg-slate-950 border border-white/[0.03] rounded-lg p-2.5">
                                     <div className="flex justify-between items-center text-[9px] mb-1.5 border-b border-white/[0.03] pb-1">
-                                      <span className="font-extrabold text-cyan-450 font-mono">{tool.name}()</span>
+                                      <span className="font-extrabold text-teal-400 font-mono">{tool.name}()</span>
                                       <span className="text-[7px] bg-green-500/10 text-green-400 px-1.5 py-0.25 rounded font-black border border-green-500/20">
                                         EXECUTED
                                       </span>
@@ -142,7 +142,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                                     {/* Result */}
                                     <div>
                                       <span className="text-[8px] text-slate-600 font-bold block uppercase tracking-wider">OUTPUT:</span>
-                                      <pre className="text-[10px] text-green-400/80 font-mono bg-slate-950/90 p-2 rounded border border-white/5 mt-0.5 overflow-x-auto">
+                                      <pre className="text-[10px] text-teal-400/80 font-mono bg-slate-950/90 p-2 rounded border border-white/5 mt-0.5 overflow-x-auto">
                                         {JSON.stringify(tool.result, null, 2)}
                                       </pre>
                                     </div>
