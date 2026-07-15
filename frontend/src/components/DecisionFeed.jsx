@@ -28,7 +28,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex justify-between items-center mb-3.5 pb-2 border-b border-white/[0.03]">
-        <h2 className="text-[10px] font-black tracking-widest text-slate-500 flex items-center gap-2 uppercase font-mono">
+        <h2 className="text-[10px] font-black tracking-widest text-slate-400 flex items-center gap-2 uppercase font-mono">
           <span>🧠</span> AI DECISION LOGS
         </h2>
         <span className="text-[9px] bg-slate-950 border border-white/5 text-slate-400 px-2 py-0.5 rounded-full font-bold font-mono">
@@ -36,13 +36,17 @@ export default function DecisionFeed({ logs, prefersReduced }) {
         </span>
       </div>
 
-      {/* Feed container */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[380px]">
+      {/* Feed container with ARIA Live updates */}
+      <div 
+        className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[380px]" 
+        aria-live="polite" 
+        role="log"
+      >
         {logs.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-650 py-12 text-center">
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12 text-center">
             <span className="text-2xl mb-1.5 opacity-60">📡</span>
-            <p className="text-xs font-bold text-slate-500">Awaiting telemetry tick...</p>
-            <p className="text-[9px] text-slate-650 mt-1 uppercase tracking-wider font-semibold font-mono">Autonomous reasoning active</p>
+            <p className="text-xs font-bold text-slate-350">Awaiting telemetry tick...</p>
+            <p className="text-[9px] text-slate-450 mt-1 uppercase tracking-wider font-semibold font-mono">Autonomous reasoning active</p>
           </div>
         ) : (
           <div className="relative">
@@ -76,7 +80,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                     {/* Log Header */}
                     <div className="flex justify-between items-start gap-4 mb-2.5">
                       <div className="space-y-1">
-                        <span className="text-[9px] text-slate-500 font-mono block">
+                        <span className="text-[9px] text-slate-450 font-mono block">
                           TICK TIME: {formatTimestamp(log.timestamp)} • UTC
                         </span>
                         <span className={`inline-block text-[8px] font-black tracking-wider px-2 py-0.5 rounded border ${getTriggerBadge(log.trigger)}`}>
@@ -86,6 +90,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                       <button
                         onClick={() => setExpandedLogIndex(isExpanded ? null : index)}
                         className="text-[9px] text-teal-400 hover:text-teal-300 font-black focus-visible:ring-1 focus-visible:ring-teal-500/50 rounded px-1.5 py-0.5 bg-slate-950 border border-white/5 transition-colors"
+                        aria-label={isExpanded ? "Hide execution trace details" : "View execution trace details"}
                       >
                         {isExpanded ? 'Hide Trace' : 'View Trace'}
                       </button>
@@ -97,8 +102,8 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                     </p>
 
                     {/* Reasoning terminal block */}
-                    <div className="bg-slate-950 border border-white/[0.03] rounded-lg p-3 text-[11px] leading-relaxed text-slate-350 font-mono selection:bg-teal-500/20 shadow-inner">
-                      <span className="text-[8px] font-bold text-teal-500 block mb-1">STADIUM_OS://COMMANDER/THOUGHTS:</span>
+                    <div className="bg-slate-950 border border-white/[0.03] rounded-lg p-3 text-[11px] leading-relaxed text-slate-300 font-mono selection:bg-teal-500/20 shadow-inner">
+                      <span className="text-[8px] font-bold text-teal-550 block mb-1">STADIUM_OS://COMMANDER/THOUGHTS:</span>
                       {log.reasoning}
                     </div>
 
@@ -113,11 +118,11 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                           className="overflow-hidden"
                         >
                           <div className="mt-4 pt-3.5 border-t border-white/[0.04] space-y-3">
-                            <h4 className="text-[8px] font-black text-slate-655 tracking-widest uppercase">
+                            <h4 className="text-[8px] font-black text-slate-400 tracking-widest uppercase">
                               🛠️ RUNTIME TOOL EXECUTIONS ({log.tools_called.length})
                             </h4>
                             {log.tools_called.length === 0 ? (
-                              <p className="text-[10px] text-slate-650 italic">Verify state normal. No actions triggered.</p>
+                              <p className="text-[10px] text-slate-450 italic font-sans">Verify state normal. No actions triggered.</p>
                             ) : (
                               <div className="space-y-2.5">
                                 {log.tools_called.map((tool, tIdx) => (
@@ -132,8 +137,8 @@ export default function DecisionFeed({ logs, prefersReduced }) {
                                     {/* Arguments */}
                                     {Object.keys(tool.args).length > 0 && (
                                       <div className="mb-1.5">
-                                        <span className="text-[8px] text-slate-600 font-bold block uppercase tracking-wider">PARAMS:</span>
-                                        <pre className="text-[10px] text-slate-450 font-mono bg-slate-950/90 p-2 rounded border border-white/5 mt-0.5 overflow-x-auto">
+                                        <span className="text-[8px] text-slate-450 font-bold block uppercase tracking-wider">PARAMS:</span>
+                                        <pre className="text-[10px] text-slate-350 font-mono bg-slate-950/90 p-2 rounded border border-white/5 mt-0.5 overflow-x-auto">
                                           {JSON.stringify(tool.args, null, 2)}
                                         </pre>
                                       </div>
@@ -141,7 +146,7 @@ export default function DecisionFeed({ logs, prefersReduced }) {
 
                                     {/* Result */}
                                     <div>
-                                      <span className="text-[8px] text-slate-600 font-bold block uppercase tracking-wider">OUTPUT:</span>
+                                      <span className="text-[8px] text-slate-455 font-bold block uppercase tracking-wider">OUTPUT:</span>
                                       <pre className="text-[10px] text-teal-400/80 font-mono bg-slate-950/90 p-2 rounded border border-white/5 mt-0.5 overflow-x-auto">
                                         {JSON.stringify(tool.result, null, 2)}
                                       </pre>

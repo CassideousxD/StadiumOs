@@ -79,7 +79,7 @@ export default function App() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 2000);
+    const interval = setInterval(fetchStatus, 4000);
     return () => clearInterval(interval);
   }, [selectedZone]);
 

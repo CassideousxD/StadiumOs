@@ -14,13 +14,22 @@ from .tools.db_helper import read_stadium_status, read_transport_status, write_s
 app = FastAPI(title="StadiumOS API", description="Control Tower & Fan Assistant Telemetry API")
 
 # Configure CORS
+allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For hackathon/development convenience
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Simple regex-based HTML tag sanitizer
+import re
+def sanitize_input(text: str) -> str:
+    cleaned = re.sub(r'<[^>]*>', '', text)
+    if len(cleaned) > 500:
+        cleaned = cleaned[:500]
+    return cleaned.strip()
 
 # Pydantic models for request bodies
 class IncidentRequest(BaseModel):
@@ -93,7 +102,7 @@ def report_incident(req: IncidentRequest):
     """
     Inject a free-text incident report into the telemetry feed.
     """
-    desc = req.description.strip()
+    desc = sanitize_input(req.description)
     if not desc:
         raise HTTPException(status_code=400, detail="Incident description cannot be empty.")
     
@@ -112,7 +121,7 @@ def fan_chat(req: FanQueryRequest):
     """
     Process a fan query and return a response in the query's language.
     """
-    question = req.question.strip()
+    question = sanitize_input(req.question)
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
         

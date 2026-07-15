@@ -38,7 +38,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
     if (density >= 75) return 'border-red-500/20 bg-red-950/[0.02] text-rose-250 hover:border-red-500/40';
     if (density >= 60) return 'border-orange-500/20 bg-orange-950/[0.015] text-orange-255 hover:border-orange-500/40';
     if (density >= 40) return 'border-teal-500/20 bg-teal-950/[0.01] text-teal-200 hover:border-teal-500/40'; // World cup green-teal
-    return 'border-white/[0.03] bg-white/[0.005] text-slate-450 hover:border-white/[0.08]';
+    return 'border-white/[0.03] bg-white/[0.005] text-slate-400 hover:border-white/[0.08]';
   };
 
   const getPercentageBarColor = (density) => {
@@ -48,18 +48,11 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
     return 'from-slate-700 to-slate-500';
   };
 
-  const getStatusLabel = (density) => {
-    if (density >= 75) return 'CRITICAL';
-    if (density >= 60) return 'CONGESTED';
-    if (density >= 40) return 'OPTIMAL';
-    return 'CALM';
-  };
-
   const getDensityTheme = (density) => {
     if (density >= 75) return { color: '#EF4444', label: 'CRITICAL', dot: 'bg-red-500 animate-pulse' };
     if (density >= 60) return { color: '#F97316', label: 'CONGESTED', dot: 'bg-orange-500 animate-pulse' };
     if (density >= 40) return { color: '#14B8A6', label: 'OPTIMAL', dot: 'bg-teal-500' };
-    return { color: '#64748B', label: 'CALM', dot: 'bg-slate-500' };
+    return { color: '#94A3B8', label: 'CALM', dot: 'bg-slate-400' };
   };
 
   // Framer Motion variants
@@ -105,17 +98,17 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
           <h2 className="text-sm font-extrabold tracking-widest text-slate-400 flex items-center gap-2 uppercase font-display">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-550"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-555"></span>
             </span>
             LIVE STADIUM HEATMAP
           </h2>
-          <p className="text-[10px] text-slate-500 mt-0.5">Click a zone to inspect detailed sensor diagnostics and live feeds</p>
+          <p className="text-[10px] text-slate-400 mt-0.5 font-sans">Click a zone to inspect detailed sensor diagnostics and live feeds</p>
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-3.5 text-[9px] font-black tracking-widest text-slate-550 bg-slate-950/80 p-2 py-1.5 rounded-full border border-white/[0.04] shadow-inner">
+        <div className="flex flex-wrap gap-3.5 text-[9px] font-black tracking-widest text-slate-400 bg-slate-950/80 p-2 py-1.5 rounded-full border border-white/[0.04] shadow-inner">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-slate-500"></span> CALM
+            <span className="w-2 h-2 rounded-full bg-slate-400"></span> CALM
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span> OPTIMAL
@@ -304,7 +297,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
               {/* Header inside card */}
               <div className="flex justify-between items-start gap-4 mb-2">
                 <div className="space-y-0.5 min-w-0 flex-1">
-                  <span className="text-[8px] font-bold tracking-widest text-slate-500 uppercase block font-mono">
+                  <span className="text-[8px] font-bold tracking-widest text-slate-400 uppercase block font-mono">
                     {zone.id.replace('_', ' ')}
                   </span>
                   <h3 className="text-xs font-black text-slate-100 leading-tight group-hover:text-teal-400 transition-colors break-words font-display">
@@ -319,8 +312,8 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                     : zone.crowd_density >= 60
                     ? 'bg-orange-500/10 text-orange-400 border-orange-500/25'
                     : zone.crowd_density >= 40
-                    ? 'bg-teal-550/10 text-teal-400 border-teal-500/25 font-bold'
-                    : 'bg-white/5 text-slate-450 border-white/5 font-normal'
+                    ? 'bg-teal-500/10 text-teal-400 border-teal-500/25 font-bold'
+                    : 'bg-white/5 text-slate-400 border-white/5 font-normal'
                 }`}>
                   {theme.label}
                 </span>
@@ -330,9 +323,9 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
               <div className="my-2.5 flex items-baseline gap-2">
                 <span className="text-4xl font-extrabold tracking-tighter text-slate-100 font-display">
                   <AnimatedNumber value={zone.crowd_density} />
-                  <span className="text-lg font-bold text-slate-500 ml-0.5">%</span>
+                  <span className="text-lg font-bold text-slate-450 ml-0.5">%</span>
                 </span>
-                <span className="text-[10px] text-slate-550 font-semibold uppercase tracking-wider font-mono">Capacity</span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider font-mono">Capacity</span>
               </div>
 
               {/* Thicker Gradient Progress Bar */}
@@ -346,7 +339,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
               {/* Grid of Metadata */}
               <div className="grid grid-cols-2 gap-2 text-left text-[10px] border-t border-white/[0.03] pt-2.5">
                 <div>
-                  <span className="text-[8px] font-bold text-slate-550 block uppercase tracking-wider font-mono">
+                  <span className="text-[8px] font-bold text-slate-400 block uppercase tracking-wider font-mono">
                     {zone.gate_queue_time_mins > 0 ? 'Wait Queue' : 'Access Node'}
                   </span>
                   <span className="font-extrabold text-slate-350 mt-0.5 block truncate">
@@ -359,7 +352,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                 </div>
                 
                 <div>
-                  <span className="text-[8px] font-bold text-slate-550 block uppercase tracking-wider font-mono">Sensors</span>
+                  <span className="text-[8px] font-bold text-slate-400 block uppercase tracking-wider font-mono">Sensors</span>
                   <span className="font-bold text-slate-400 mt-0.5 block truncate">
                     {zone.weather.temp_c}°C • {zone.weather.condition}
                   </span>
@@ -375,7 +368,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                     </span>
                   )}
                   {activeAlerts.length > 0 && (
-                    <span className="bg-teal-700 text-white text-[7px] font-black px-1 py-0.25 rounded border border-teal-600">
+                    <span className="bg-teal-750 text-white text-[7px] font-black px-1 py-0.25 rounded border border-teal-600">
                       📣 ALERT
                     </span>
                   )}

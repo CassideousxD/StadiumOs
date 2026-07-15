@@ -166,7 +166,8 @@ def run_fan_agent(question: str) -> str:
         )
         return response.text or "I apologize, but I could not formulate an answer."
     except Exception as e:
-        return f"Error connecting to AI: {e}"
+        print(f"Server-side error in run_fan_agent: {e}")
+        return "I am sorry, but I am unable to connect to the assistant right now. Please try again in a moment."
 
 # --- MOCK FALLBACK AGENTS ---
 
