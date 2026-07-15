@@ -20,7 +20,6 @@ export default function App() {
         setActiveTab('fan');
       } else {
         setActiveTab('control-tower');
-        // Ensure path shows control-tower if blank
         if (path !== '/control-tower') {
           window.history.replaceState({}, '', '/control-tower');
         }
@@ -48,7 +47,6 @@ export default function App() {
       setSimulationPaused(data.simulation_paused);
       setApiKeyConfigured(data.api_key_configured);
       
-      // Keep selected zone selection in sync
       if (data.stadium && selectedZone) {
         setSelectedZone(data.stadium[selectedZone.id]);
       }
@@ -59,7 +57,6 @@ export default function App() {
     }
   };
 
-  // Poll status every 2 seconds
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 2000);
@@ -92,12 +89,10 @@ export default function App() {
       };
 
       ws.onclose = () => {
-        console.log('WebSocket closed, attempting reconnect in 3s...');
         reconnectTimeout = setTimeout(connectWebSocket, 3000);
       };
 
       ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
         ws.close();
       };
     };
@@ -135,7 +130,6 @@ export default function App() {
         body: JSON.stringify({ description })
       });
       if (res.ok) {
-        // Refresh immediately to show queued incident
         fetchStatus();
       }
     } catch (err) {
@@ -160,58 +154,67 @@ export default function App() {
 
   if (loading && Object.keys(stadiumData).length === 0) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-cyan-400">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="font-bold tracking-widest text-xs uppercase animate-pulse">Initializing StadiumOS...</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-cyan-400 font-mono">
+        <div className="relative w-16 h-16 flex items-center justify-center mb-6">
+          <div className="absolute inset-0 border-4 border-cyan-500/20 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="font-extrabold tracking-[0.2em] text-xs uppercase animate-pulse">Initializing StadiumOS</p>
+        <span className="text-[10px] text-slate-500 mt-2">Connecting to local telemetry node...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950">
-      {/* Navigation Header */}
-      <header className="glass-panel sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-slate-800">
+    <div className="min-h-screen flex flex-col ambient-bg relative overflow-x-hidden">
+      {/* Glow Orbs in Background */}
+      <div className="glow-orb glow-orb-blue"></div>
+      <div className="glow-orb glow-orb-cyan"></div>
+      <div className="glow-orb glow-orb-purple"></div>
+
+      {/* Floating Glass Navigation Header */}
+      <header className="sticky top-0 z-50 px-6 py-4 mx-4 my-3 rounded-2xl glass-panel-heavy border-slate-800/80 flex justify-between items-center shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-950">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-950/50">
             🏟️
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-widest text-slate-100 uppercase">
-              Stadium<span className="text-cyan-400">OS</span>
+            <h1 className="text-xl font-extrabold tracking-wider text-slate-100 flex items-center gap-1.5">
+              Stadium<span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">OS</span>
             </h1>
-            <span className="text-[9px] text-slate-400 font-bold tracking-widest block -mt-1 uppercase">
-              FIFA World Cup 2026 Operations Control
+            <span className="text-[9px] text-slate-400 font-bold tracking-[0.15em] block uppercase">
+              FIFA World Cup 2026 AI Control Tower
             </span>
           </div>
         </div>
 
         {/* Tab Selector */}
-        <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+        <nav className="flex gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/60 shadow-inner">
           <button
             onClick={() => handleTabChange('control-tower')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
+            className={`text-xs font-bold px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               activeTab === 'control-tower'
-                ? 'bg-slate-800 text-cyan-400 border border-slate-700/60 shadow-sm'
+                ? 'bg-slate-900 text-cyan-400 shadow-md shadow-slate-950 border border-slate-800/80'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🎛️ Control Tower
+            <span>🎛️</span> Control Tower
           </button>
           <button
             onClick={() => handleTabChange('fan')}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
+            className={`text-xs font-bold px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
               activeTab === 'fan'
-                ? 'bg-slate-800 text-cyan-400 border border-slate-700/60 shadow-sm'
+                ? 'bg-slate-900 text-cyan-400 shadow-md shadow-slate-950 border border-slate-800/80'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🙋 Fan Portal
+            <span>🙋</span> Fan Portal
           </button>
         </nav>
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 overflow-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-2 relative z-10">
         {activeTab === 'control-tower' ? (
           <Dashboard
             stadiumData={stadiumData}
@@ -234,7 +237,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="py-4 text-center border-t border-slate-900/60 text-[10px] text-slate-500 font-semibold tracking-wider bg-slate-950">
+      <footer className="py-6 text-center border-t border-slate-900/60 text-[10px] text-slate-500 font-bold tracking-[0.2em] bg-slate-950/40 backdrop-blur-md relative z-10 uppercase mt-8">
         STADIUMOS © 2026 • FIFA WORLD CUP stadium MANAGEMENT AI AGENT SYSTEM
       </footer>
     </div>

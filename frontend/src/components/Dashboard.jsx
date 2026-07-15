@@ -33,15 +33,15 @@ export default function Dashboard({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* API Warning Banner if key not set */}
       {!apiKeyConfigured && (
-        <div className="bg-amber-600/10 border border-amber-500/30 rounded-xl p-3.5 flex items-center justify-between text-xs text-amber-200">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⚠️</span>
-            <div>
-              <span className="font-bold">MOCK AGENT FALLBACK MODE ACTIVE</span>
-              <p className="text-[11px] text-amber-400 mt-0.5">
+        <div className="bg-amber-500/5 border border-amber-500/25 rounded-2xl p-4 flex items-center justify-between text-xs text-amber-250 shadow-inner">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⚠️</span>
+            <div className="space-y-0.5">
+              <span className="font-extrabold uppercase tracking-wider block text-[10px] text-amber-400">MOCK AGENT FALLBACK MODE ACTIVE</span>
+              <p className="text-[11px] text-slate-350 leading-normal font-medium">
                 The backend did not detect a valid <code>GEMINI_API_KEY</code>. The system is running on local heuristics to simulate tool actions. Copy <code>.env.example</code> to <code>.env</code> with your key to test real GenAI orchestration!
               </p>
             </div>
@@ -50,26 +50,29 @@ export default function Dashboard({
       )}
 
       {/* Control Actions & Simulation Status */}
-      <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-wrap gap-4 justify-between items-center bg-slate-900/40">
+      <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 flex flex-wrap gap-4 justify-between items-center bg-slate-900/15 shadow-xl">
         <div className="flex gap-4 items-center">
           <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">SIMULATION CONTROL</span>
+            <span className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest block">TELEMETRY SIMULATOR</span>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`w-2 h-2 rounded-full ${simulationPaused ? 'bg-amber-500' : 'bg-emerald-500 animate-ping'}`}></span>
-              <span className="text-xs font-bold text-slate-200">
-                Status: {simulationPaused ? 'PAUSED' : 'RUNNING (Ticks every 10s)'}
+              <span className={`relative flex h-2 w-2`}>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${simulationPaused ? 'bg-amber-400' : 'bg-emerald-450'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${simulationPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+              </span>
+              <span className="text-xs font-bold text-slate-300">
+                Status: {simulationPaused ? 'PAUSED' : 'LIVE FEEDING (Ticks every 10s)'}
               </span>
             </div>
           </div>
           <button
             onClick={onToggleSimulation}
-            className={`text-xs font-black px-4 py-2 rounded-lg border transition-all duration-200 uppercase tracking-wider ${
+            className={`text-[10px] font-black px-4.5 py-2.5 rounded-xl border transition-all duration-300 uppercase tracking-widest ${
               simulationPaused
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-emerald-950/20 shadow-md'
-                : 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border-amber-500/30'
+                ? 'bg-emerald-600/90 hover:bg-emerald-500 text-white border-emerald-500/40 shadow-lg shadow-emerald-950/20'
+                : 'bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 border-amber-500/25'
             }`}
           >
-            {simulationPaused ? '▶️ Resume' : '⏸️ Pause'}
+            {simulationPaused ? '▶️ Resume telemetry' : '⏸️ Pause telemetry'}
           </button>
         </div>
 
@@ -77,9 +80,9 @@ export default function Dashboard({
         <div className="flex gap-3">
           <button
             onClick={onResetSimulation}
-            className="text-xs font-black bg-slate-850 hover:bg-slate-800 text-slate-300 px-4 py-2 border border-slate-700 rounded-lg transition-all"
+            className="text-[10px] font-black bg-slate-950/80 hover:bg-slate-900/60 text-slate-400 hover:text-slate-200 px-4 py-2.5 border border-slate-900 rounded-xl transition-all tracking-widest uppercase"
           >
-            🔄 Reset Simulation
+            🔄 Reset telemetry
           </button>
         </div>
       </div>
@@ -88,7 +91,7 @@ export default function Dashboard({
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         {/* Left Side: Heatmap (Grid span 3) */}
         <div className="xl:col-span-3 flex flex-col gap-6">
-          <div className="glass-panel p-5 rounded-xl border border-slate-800 shadow-xl flex-1">
+          <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 shadow-2xl flex-1">
             <Heatmap
               stadiumData={stadiumData}
               selectedZone={selectedZone}
@@ -97,12 +100,12 @@ export default function Dashboard({
           </div>
 
           {/* Incident Injector Panel */}
-          <div className="glass-panel p-5 rounded-xl border border-slate-800 shadow-xl">
-            <h3 className="text-base font-bold text-slate-100 mb-3 flex items-center gap-1.5">
+          <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 shadow-2xl">
+            <h3 className="text-sm font-extrabold text-slate-100 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
               <span>🚨</span> OPERATIONAL INCIDENT INJECTOR
             </h3>
-            <p className="text-xs text-slate-400 mb-3">
-              Type in a live emergency report (e.g. <i>"Crowd congestion bottleneck in Gate B entrance"</i> or <i>"Visitor in Zone 3 needs wheelchair support"</i>) to trigger the Commander AI Agent's real-time reasoning and tool response.
+            <p className="text-xs text-slate-400 mb-3.5 leading-normal font-medium">
+              Describe an emergency report (e.g. <i>"Crowd congestion bottleneck in Gate B entrance"</i> or <i>"Visitor in zone_3 needs wheelchair support"</i>) to trigger the Commander AI Agent's real-time reasoning and tool response.
             </p>
 
             <form onSubmit={handleInject} className="flex gap-3">
@@ -112,12 +115,12 @@ export default function Dashboard({
                 onChange={(e) => setIncidentText(e.target.value)}
                 disabled={injecting}
                 placeholder="Describe the stadium incident..."
-                className="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50"
+                className="flex-1 bg-slate-950 border border-slate-850 text-slate-200 text-xs rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50 shadow-inner"
               />
               <button
                 type="submit"
                 disabled={injecting || !incidentText.trim()}
-                className="bg-rose-700 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs px-5 py-3 rounded-xl transition-all duration-200 shrink-0 uppercase tracking-wider"
+                className="bg-rose-700 hover:bg-rose-600 disabled:bg-slate-900 disabled:text-slate-650 text-white font-extrabold text-xs px-5 py-3.5 rounded-xl transition-all duration-200 shrink-0 uppercase tracking-widest border border-rose-600/35"
               >
                 Inject Incident
               </button>

@@ -46,13 +46,12 @@ export default function FanInterface({ stadiumData, onRefresh }) {
   };
 
   const getLanguageTranslation = (alert) => {
-    // If the alert contains translations, return a nicely formatted list or the most common ones
     if (alert.translations) {
       return (
-        <div className="space-y-1.5 mt-1 text-[11px] text-slate-300 font-sans border-l-2 border-slate-700 pl-2">
+        <div className="space-y-1.5 mt-2 text-[11px] text-slate-350 font-sans border-l border-slate-700 pl-3.5">
           {Object.entries(alert.translations).map(([lang, text]) => (
-            <p key={lang} className="italic">
-              <span className="font-bold uppercase text-[9px] bg-slate-800 text-slate-400 px-1 rounded mr-1">
+            <p key={lang} className="italic leading-normal">
+              <span className="font-extrabold uppercase text-[8px] bg-slate-900 border border-slate-800 text-slate-450 px-1.5 py-0.25 rounded mr-1.5 inline-block">
                 {lang}
               </span>
               {text}
@@ -65,18 +64,19 @@ export default function FanInterface({ stadiumData, onRefresh }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-      {/* Zone Alerts Panel */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)] animate-fade-in">
+      {/* Zone Selector & Alerts Panel */}
       <div className="lg:col-span-1 flex flex-col h-full gap-4">
-        <div className="glass-panel p-5 rounded-xl border border-slate-800 shadow-xl flex flex-col">
-          <h2 className="text-lg font-bold tracking-wider text-slate-100 mb-4 flex items-center gap-2">
+        {/* Zone Dropdown */}
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 shadow-xl flex flex-col">
+          <h2 className="text-sm font-extrabold tracking-wider text-slate-100 mb-4 flex items-center gap-2">
             <span>📍</span> SELECT YOUR ZONE
           </h2>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">STADIUM ZONE</label>
+          <label className="text-[10px] font-extrabold text-slate-500 mb-1.5 block uppercase tracking-wider">STADIUM ZONE</label>
           <select
             value={selectedZoneId}
             onChange={(e) => setSelectedZoneId(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-750 text-slate-200 rounded-lg p-2.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="w-full bg-slate-950 border border-slate-850 text-slate-200 rounded-xl p-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 shadow-inner"
           >
             {Object.values(stadiumData).map((zone) => (
               <option key={zone.id} value={zone.id}>
@@ -86,23 +86,23 @@ export default function FanInterface({ stadiumData, onRefresh }) {
           </select>
         </div>
 
-        {/* Alerts Feed */}
-        <div className="glass-panel p-5 rounded-xl border border-slate-800 shadow-xl flex-1 overflow-hidden flex flex-col">
-          <h2 className="text-lg font-bold tracking-wider text-slate-100 mb-3 flex items-center gap-2">
+        {/* Live Alerts Feed */}
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 shadow-xl flex-1 overflow-hidden flex flex-col">
+          <h2 className="text-sm font-extrabold tracking-wider text-slate-100 mb-3.5 flex items-center gap-2">
             <span>📢</span> ZONE ALERTS
           </h2>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
             {activeAlerts.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12 text-center">
-                <span className="text-3xl mb-1">🔔</span>
-                <p className="text-xs font-semibold">No active alerts for this zone</p>
-                <p className="text-[10px] text-slate-650 mt-0.5">Safety advisories will appear here if issued</p>
+              <div className="h-full flex flex-col items-center justify-center text-slate-650 py-16 text-center">
+                <span className="text-2xl mb-1.5 animate-pulse">🔔</span>
+                <p className="text-xs font-bold text-slate-400">No active alerts for this zone</p>
+                <p className="text-[9px] text-slate-600 mt-1 uppercase tracking-wider font-semibold">Safety bulletins appear here</p>
               </div>
             ) : (
               activeAlerts.map((alert, idx) => (
-                <div key={idx} className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex justify-between items-center text-[10px] text-amber-400 font-bold mb-1.5 uppercase tracking-wider">
-                    <span>⚠️ ZONE ALERT</span>
+                <div key={idx} className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 shadow-inner">
+                  <div className="flex justify-between items-center text-[8px] text-amber-400 font-extrabold mb-2 uppercase tracking-widest border-b border-amber-500/10 pb-1">
+                    <span>⚠️ PUBLIC ADVISORY</span>
                     <span>
                       {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
@@ -115,16 +115,19 @@ export default function FanInterface({ stadiumData, onRefresh }) {
         </div>
       </div>
 
-      {/* Multilingual Assistant Chat */}
-      <div className="lg:col-span-2 glass-panel rounded-xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-full">
+      {/* Modern Assistant Chat */}
+      <div className="lg:col-span-2 glass-panel rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden flex flex-col h-full">
         {/* Chat Header */}
-        <div className="bg-slate-900/80 px-5 py-4 border-b border-slate-800 flex justify-between items-center">
+        <div className="bg-slate-950/70 px-5 py-4 border-b border-slate-900 flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <h2 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+              </span>
               FAN ASSISTANT
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Ask questions about crowd, gates, shuttles in any language</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Instant, context-aware answers translated in real-time</p>
           </div>
           <button
             onClick={() => {
@@ -136,9 +139,9 @@ export default function FanInterface({ stadiumData, onRefresh }) {
                 }
               ]);
             }}
-            className="text-xs text-slate-400 hover:text-slate-300 underline font-bold"
+            className="text-[11px] text-slate-500 hover:text-slate-400 font-extrabold underline transition-colors"
           >
-            Clear Chat
+            Clear History
           </button>
         </div>
 
@@ -147,17 +150,17 @@ export default function FanInterface({ stadiumData, onRefresh }) {
           {chatHistory.map((msg, idx) => (
             <div
               key={idx}
-              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.3s_ease-out]`}
+              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-md ${
+                className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-lg ${
                   msg.sender === 'user'
-                    ? 'bg-cyan-600 text-white rounded-br-none glow-border-blue'
-                    : 'bg-slate-900 border border-slate-800/80 text-slate-200 rounded-bl-none'
+                    ? 'bg-cyan-600/90 text-white rounded-br-none border border-cyan-500/30'
+                    : 'bg-slate-950/70 border border-slate-900 text-slate-200 rounded-bl-none'
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
-                <span className="text-[9px] text-slate-400 block mt-1.5 text-right font-medium">
+                <span className="text-[9px] text-slate-500 block mt-1.5 text-right font-bold">
                   {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -166,11 +169,11 @@ export default function FanInterface({ stadiumData, onRefresh }) {
 
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-slate-900 border border-slate-800/80 text-slate-400 rounded-2xl rounded-bl-none px-4 py-3 text-xs flex items-center gap-2 shadow-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                <span className="font-semibold text-slate-500 italic ml-1">AI Assistant is typing...</span>
+              <div className="bg-slate-950/70 border border-slate-900 text-slate-400 rounded-2xl rounded-bl-none px-4 py-3.5 text-xs flex items-center gap-2 shadow-lg">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 typing-dot"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 typing-dot"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 typing-dot"></span>
+                <span className="font-bold text-slate-500 italic ml-1 uppercase text-[9px] tracking-wider">Agent is typing</span>
               </div>
             </div>
           )}
@@ -178,19 +181,19 @@ export default function FanInterface({ stadiumData, onRefresh }) {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="p-4 bg-slate-900/60 border-t border-slate-800/80 flex gap-2">
+        <form onSubmit={handleSubmit} className="p-4 bg-slate-950/60 border-t border-slate-900 flex gap-2">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             disabled={loading}
             placeholder="Ask where the shuttles are, or request Gate queue status..."
-            className="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50"
+            className="flex-1 bg-slate-950 border border-slate-850 text-slate-250 text-xs rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50 shadow-inner"
           />
           <button
             type="submit"
             disabled={loading || !question.trim()}
-            className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs px-5 py-3 rounded-xl transition-all duration-200"
+            className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-900 disabled:text-slate-600 text-white font-extrabold text-xs px-5 py-3.5 rounded-xl transition-all duration-200 uppercase tracking-wider"
           >
             Send
           </button>
