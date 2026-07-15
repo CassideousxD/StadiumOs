@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Dashboard from './components/Dashboard';
 import FanInterface from './components/FanInterface';
 
@@ -11,8 +12,19 @@ export default function App() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(true);
   const [selectedZone, setSelectedZone] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  // 1. Path-based routing sync
+  // 1. Accessibility: Detect prefers-reduced-motion
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const listener = (e) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', listener);
+    return () => mediaQuery.removeEventListener('change', listener);
+  }, []);
+
+  // 2. Path-based routing sync
   useEffect(() => {
     const handleLocationChange = () => {
       const path = window.location.pathname;
@@ -36,7 +48,7 @@ export default function App() {
     window.history.pushState({}, '', `/${tab}`);
   };
 
-  // 2. Fetch active telemetry status
+  // 3. Fetch active telemetry status
   const fetchStatus = async () => {
     try {
       const res = await fetch('http://localhost:8000/api/status');
@@ -53,7 +65,8 @@ export default function App() {
     } catch (err) {
       console.error('Error fetching stadium status:', err);
     } finally {
-      setLoading(false);
+      // Delay slightly for smoother transition out of skeleton
+      setTimeout(() => setLoading(false), 800);
     }
   };
 
@@ -63,7 +76,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [selectedZone]);
 
-  // 3. WebSocket listener for live AI reasoning
+  // 4. WebSocket listener for live AI reasoning
   useEffect(() => {
     let ws;
     let reconnectTimeout;
@@ -105,7 +118,7 @@ export default function App() {
     };
   }, []);
 
-  // 4. API mutation triggers
+  // 5. API mutations
   const toggleSimulation = async () => {
     const nextState = !simulationPaused;
     try {
@@ -152,35 +165,81 @@ export default function App() {
     }
   };
 
+  // SKELETON LOADING STATE
   if (loading && Object.keys(stadiumData).length === 0) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-cyan-400 font-mono">
-        <div className="relative w-16 h-16 flex items-center justify-center mb-6">
-          <div className="absolute inset-0 border-4 border-cyan-500/20 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#0A0A0B] p-6 space-y-6 flex flex-col overflow-hidden">
+        {/* Header Skeleton */}
+        <div className="h-16 w-full bg-white/[0.015] border border-white/[0.04] rounded-2xl flex justify-between items-center px-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/[0.04] rounded-xl animate-pulse"></div>
+            <div className="space-y-2">
+              <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse"></div>
+              <div className="h-2.5 w-36 bg-white/[0.02] rounded animate-pulse"></div>
+            </div>
+          </div>
+          <div className="w-48 h-10 bg-white/[0.03] rounded-xl animate-pulse"></div>
         </div>
-        <p className="font-extrabold tracking-[0.2em] text-xs uppercase animate-pulse">Initializing StadiumOS</p>
-        <span className="text-[10px] text-slate-500 mt-2">Connecting to local telemetry node...</span>
+
+        {/* Controls Skeleton */}
+        <div className="h-16 w-full bg-white/[0.015] border border-white/[0.04] rounded-2xl animate-pulse"></div>
+
+        {/* Content Grid Skeleton */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 flex-1">
+          <div className="xl:col-span-3 space-y-6 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white/[0.015] border border-white/[0.04] rounded-2xl p-5 flex flex-col justify-between h-[180px]">
+                  <div className="flex justify-between items-center">
+                    <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse"></div>
+                    <div className="h-4 w-12 bg-white/[0.04] rounded animate-pulse"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2 w-14 bg-white/[0.02] rounded animate-pulse"></div>
+                    <div className="h-6 w-24 bg-white/[0.04] rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-2 w-full bg-white/[0.03] rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+            <div className="h-[120px] bg-white/[0.015] border border-white/[0.04] rounded-2xl animate-pulse mt-4"></div>
+          </div>
+
+          <div className="xl:col-span-1 flex flex-col gap-6">
+            <div className="h-[280px] bg-white/[0.015] border border-white/[0.04] rounded-2xl animate-pulse"></div>
+            <div className="flex-1 min-h-[300px] bg-white/[0.015] border border-white/[0.04] rounded-2xl animate-pulse"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Animation variants respecting prefers-reduced-motion
+  const pageVariants = {
+    initial: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 8
+    },
+    animate: {
+      opacity: 1,
+      y: 0
+    },
+    exit: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : -8
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col ambient-bg relative overflow-x-hidden">
-      {/* Glow Orbs in Background */}
-      <div className="glow-orb glow-orb-blue"></div>
-      <div className="glow-orb glow-orb-cyan"></div>
-      <div className="glow-orb glow-orb-purple"></div>
-
-      {/* Floating Glass Navigation Header */}
-      <header className="sticky top-0 z-50 px-6 py-4 mx-4 my-3 rounded-2xl glass-panel-heavy border-slate-800/80 flex justify-between items-center shadow-2xl">
+      <header className="sticky top-0 z-50 px-6 py-4 mx-4 my-3 rounded-2xl glass-panel-heavy border-white/[0.06] flex justify-between items-center shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-950/50">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-600 to-emerald-800 flex items-center justify-center text-white text-xl shadow-lg shadow-green-950/40">
             🏟️
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-wider text-slate-100 flex items-center gap-1.5">
-              Stadium<span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">OS</span>
+            <h1 className="text-lg font-extrabold tracking-tight text-slate-100 flex items-center gap-1.5 font-display">
+              Stadium<span className="text-green-500">OS</span>
             </h1>
             <span className="text-[9px] text-slate-400 font-bold tracking-[0.15em] block uppercase">
               FIFA World Cup 2026 AI Control Tower
@@ -188,13 +247,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tab Selector */}
-        <nav className="flex gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/60 shadow-inner">
+        {/* Tab Selection */}
+        <nav className="flex gap-1 bg-slate-950/80 p-1 rounded-xl border border-white/[0.05] shadow-inner">
           <button
             onClick={() => handleTabChange('control-tower')}
-            className={`text-xs font-bold px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
+            className={`text-xs font-bold px-4 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-1.5 focus-visible:ring-1 focus-visible:ring-green-600 ${
               activeTab === 'control-tower'
-                ? 'bg-slate-900 text-cyan-400 shadow-md shadow-slate-950 border border-slate-800/80'
+                ? 'bg-slate-900 text-green-450 border border-white/[0.04] shadow-md shadow-slate-950/60'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -202,9 +261,9 @@ export default function App() {
           </button>
           <button
             onClick={() => handleTabChange('fan')}
-            className={`text-xs font-bold px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${
+            className={`text-xs font-bold px-4 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-1.5 focus-visible:ring-1 focus-visible:ring-green-600 ${
               activeTab === 'fan'
-                ? 'bg-slate-900 text-cyan-400 shadow-md shadow-slate-950 border border-slate-800/80'
+                ? 'bg-slate-900 text-green-450 border border-white/[0.04] shadow-md shadow-slate-950/60'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -213,31 +272,44 @@ export default function App() {
         </nav>
       </header>
 
-      {/* Main Container */}
+      {/* Main Container with Page transitions */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-2 relative z-10">
-        {activeTab === 'control-tower' ? (
-          <Dashboard
-            stadiumData={stadiumData}
-            transportData={transportData}
-            logs={logs}
-            simulationPaused={simulationPaused}
-            apiKeyConfigured={apiKeyConfigured}
-            selectedZone={selectedZone}
-            onSelectZone={setSelectedZone}
-            onToggleSimulation={toggleSimulation}
-            onInjectIncident={injectIncident}
-            onResetSimulation={resetSimulation}
-          />
-        ) : (
-          <FanInterface
-            stadiumData={stadiumData}
-            onRefresh={fetchStatus}
-          />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={pageVariants}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full h-full"
+          >
+            {activeTab === 'control-tower' ? (
+              <Dashboard
+                stadiumData={stadiumData}
+                transportData={transportData}
+                logs={logs}
+                simulationPaused={simulationPaused}
+                apiKeyConfigured={apiKeyConfigured}
+                selectedZone={selectedZone}
+                onSelectZone={setSelectedZone}
+                onToggleSimulation={toggleSimulation}
+                onInjectIncident={injectIncident}
+                onResetSimulation={resetSimulation}
+                prefersReduced={prefersReducedMotion}
+              />
+            ) : (
+              <FanInterface
+                stadiumData={stadiumData}
+                onRefresh={fetchStatus}
+                prefersReduced={prefersReducedMotion}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 text-center border-t border-slate-900/60 text-[10px] text-slate-500 font-bold tracking-[0.2em] bg-slate-950/40 backdrop-blur-md relative z-10 uppercase mt-8">
+      <footer className="py-6 text-center border-t border-white/[0.03] text-[9px] text-slate-500 font-extrabold tracking-[0.2em] bg-slate-950/20 backdrop-blur-md relative z-10 uppercase mt-8">
         STADIUMOS © 2026 • FIFA WORLD CUP stadium MANAGEMENT AI AGENT SYSTEM
       </footer>
     </div>
