@@ -33,18 +33,99 @@ function AnimatedNumber({ value }) {
   return <span>{displayValue}</span>;
 }
 
+// Define the 3 base paths (mathematically mirrored to construct the other 3)
+const BASE_PATHS = {
+  zone_1: "M 230,85 Q 400,30 570,85 L 535,110 Q 400,75 265,110 Z", // Gate A base
+  zone_3: "M 120,80 Q 240,115 240,225 Q 120,260 85,170 Z",         // Concourse West base
+  zone_5: "M 265,120 Q 400,90 535,120 L 510,140 Q 400,115 290,140 Z" // Grandstand North base
+};
+
+// Programmatic label positioning and collision verification
+function getLabelPositions() {
+  // Centroids representing the physical centers of the shapes
+  const centroids = {
+    zone_1: { x: 400, y: 52, dir: -1 }, // Gate A
+    zone_2: { x: 400, y: 288, dir: 1 }, // Gate B (mirrored vertically)
+    zone_3: { x: 145, y: 170, dir: 0 }, // Concourse West
+    zone_4: { x: 655, y: 170, dir: 0 }, // Concourse East (mirrored horizontally)
+    zone_5: { x: 400, y: 105, dir: 0 }, // Grandstand North
+    zone_6: { x: 400, y: 235, dir: 0 }, // Grandstand South (mirrored vertically)
+  };
+  
+  // Starting offset for outer labels
+  let offset = 34;
+  
+  let positions = {};
+  for (const [id, c] of Object.entries(centroids)) {
+    positions[id] = {
+      x: c.x,
+      y: c.y + c.dir * offset
+    };
+  }
+  
+  // Bounding box approximation for labels (width = 80px, height = 24px)
+  const width = 80;
+  const height = 24;
+  
+  const checkCollisions = (posMap) => {
+    const list = Object.entries(posMap);
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const [idA, posA] = list[i];
+        const [idB, posB] = list[j];
+        
+        const leftA = posA.x - width / 2;
+        const rightA = posA.x + width / 2;
+        const topA = posA.y - height / 2;
+        const bottomA = posA.y + height / 2;
+        
+        const leftB = posB.x - width / 2;
+        const rightB = posB.x + width / 2;
+        const topB = posB.y - height / 2;
+        const bottomB = posB.y + height / 2;
+        
+        // Return true if boxes intersect
+        const intersect = !(
+          rightA < leftB ||
+          leftA > rightB ||
+          bottomA < topB ||
+          topA > bottomB
+        );
+        
+        if (intersect) return true;
+      }
+    }
+    return false;
+  };
+  
+  // Dynamically push offset further apart if labels collide
+  let attempts = 0;
+  while (checkCollisions(positions) && attempts < 10) {
+    offset += 5;
+    for (const [id, c] of Object.entries(centroids)) {
+      positions[id] = {
+        x: c.x,
+        y: c.y + c.dir * offset
+      };
+    }
+    attempts++;
+  }
+  
+  return positions;
+}
+
 export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefersReduced }) {
   const getDensityColor = (density) => {
     if (density >= 75) return 'border-red-500/20 bg-red-950/[0.02] text-rose-250 hover:border-red-500/40';
     if (density >= 60) return 'border-orange-500/20 bg-orange-950/[0.015] text-orange-255 hover:border-orange-500/40';
-    if (density >= 40) return 'border-teal-500/20 bg-teal-950/[0.01] text-teal-200 hover:border-teal-500/40'; // World cup green-teal
+    if (density >= 40) return 'border-teal-500/20 bg-teal-950/[0.01] text-teal-200 hover:border-teal-500/40';
     return 'border-white/[0.03] bg-white/[0.005] text-slate-400 hover:border-white/[0.08]';
   };
 
   const getPercentageBarColor = (density) => {
     if (density >= 75) return 'from-red-500 to-rose-600';
     if (density >= 60) return 'from-orange-500 to-amber-500';
-    if (density >= 40) return 'from-teal-650 to-emerald-500'; // Green-teal gradient
+    if (density >= 40) return 'from-teal-650 to-emerald-500';
     return 'from-slate-700 to-slate-500';
   };
 
@@ -54,6 +135,16 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
     if (density >= 40) return { color: '#14B8A6', label: 'OPTIMAL', dot: 'bg-teal-500' };
     return { color: '#94A3B8', label: 'CALM', dot: 'bg-slate-400' };
   };
+
+  const getSVGColor = (density, isSelected) => {
+    if (density >= 75) return { fill: 'rgba(239, 68, 68, 0.22)', stroke: 'rgb(239, 68, 68)', strokeWidth: isSelected ? 3 : 1.5 };
+    if (density >= 60) return { fill: 'rgba(249, 115, 22, 0.14)', stroke: 'rgb(249, 115, 22)', strokeWidth: isSelected ? 3 : 1.5 };
+    if (density >= 40) return { fill: 'rgba(20, 184, 166, 0.12)', stroke: 'rgb(20, 184, 166)', strokeWidth: isSelected ? 3 : 1.5 };
+    return { fill: 'rgba(148, 163, 184, 0.04)', stroke: 'rgba(148, 163, 184, 0.2)', strokeWidth: isSelected ? 3 : 1 };
+  };
+
+  // Label coordinate calculations
+  const labelPositions = getLabelPositions();
 
   // Framer Motion variants
   const gridVariants = {
@@ -73,7 +164,6 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
     }
   };
 
-  // Scroll Reveal Animations in the style of Google Antigravity (blur + slide)
   const revealVariants = {
     hidden: { opacity: 0, y: prefersReduced ? 0 : 20, filter: prefersReduced ? "blur(0px)" : "blur(6px)" },
     show: { 
@@ -98,11 +188,11 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
           <h2 className="text-sm font-extrabold tracking-widest text-slate-400 flex items-center gap-2 uppercase font-display">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-555"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-550"></span>
             </span>
             LIVE STADIUM HEATMAP
           </h2>
-          <p className="text-[10px] text-slate-400 mt-0.5 font-sans">Click a zone to inspect detailed sensor diagnostics and live feeds</p>
+          <p className="text-[10px] text-slate-400 mt-0.5 font-sans">Click a zone shape or tag to inspect detailed sensor feeds</p>
         </div>
 
         {/* Legend */}
@@ -122,66 +212,79 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
         </div>
       </div>
 
-      {/* SIGNATURE VISUAL MOMENT: ORGANIC STADIUM SHAPE WITH RADIAL GRADIENTS */}
-      <div className="mb-6 flex justify-center bg-slate-950/50 p-6 rounded-3xl border border-white/[0.03] relative overflow-hidden">
-        {/* Soft Background Stadium Orb */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[180px] bg-teal-950/10 blur-[60px] rounded-full pointer-events-none"></div>
+      {/* SIGNATURE STADIUM HEATMAP WITH MATHEMATICAL SYMMETRY */}
+      <div className="mb-6 flex justify-center bg-slate-950/50 p-4 rounded-3xl border border-white/[0.03] relative overflow-hidden">
+        {/* Soft Background Orb */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[200px] bg-teal-950/5 blur-[70px] rounded-full pointer-events-none"></div>
 
-        <div className="relative w-full max-w-[480px]">
-          <svg viewBox="0 0 600 340" className="w-full h-auto z-10 relative">
+        <div className="relative w-full max-w-[580px]">
+          {/* SVG Canvas scaled to fit container boundaries */}
+          <svg viewBox="0 0 800 340" className="w-full h-auto z-10 relative">
             <defs>
-              {/* Glowing Filters */}
               <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="10" result="blur" />
+                <feGaussianBlur stdDeviation="8" result="blur" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
               
-              {/* Gradients representing Stadium Fields */}
-              <radialGradient id="pitch-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#14B8A6" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#0F5132" stopOpacity="0" />
-              </radialGradient>
+              {/* Pitch turf grass gradient */}
+              <linearGradient id="pitch-turf-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0B3C21" />
+                <stop offset="100%" stopColor="#062312" />
+              </linearGradient>
             </defs>
 
-            {/* Soccer Pitch Outline */}
-            <g opacity="0.6">
-              <rect x="240" y="135" width="120" height="70" fill="url(#pitch-glow)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" rx="4" />
-              <circle cx="300" cy="170" r="18" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-              <line x1="300" y1="135" x2="300" y2="205" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+            {/* SYMMETRIC FOOTBALL PITCH IN THE CENTER */}
+            <g opacity="0.95">
+              {/* Green grass outline */}
+              <rect x="320" y="120" width="160" height="100" fill="url(#pitch-turf-gradient)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" rx="3" />
+              {/* Halfway Line */}
+              <line x1="400" y1="120" x2="400" y2="220" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+              {/* Center Circle */}
+              <circle cx="400" cy="170" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+              
+              {/* Left Penalty Box */}
+              <rect x="320" y="140" width="22" height="60" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+              
+              {/* Right Penalty Box - Mirrored mathematically using transform */}
+              <rect x="320" y="140" width="22" height="60" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" transform="translate(800,0) scale(-1,1)" />
             </g>
 
-            {/* Stadium Zones - Soft Bezier curves for organic stadium mapping */}
+            {/* SYMMETRICAL STADIUM SECTOR PATHS (MIRRORED TRANSFORM PATTERNS) */}
             {Object.values(stadiumData).map((zone) => {
               const isSelected = selectedZone?.id === zone.id;
               const theme = getDensityTheme(zone.crowd_density);
+              const style = getSVGColor(zone.crowd_density, isSelected);
               const isCritical = zone.crowd_density >= 75;
               const isCongested = zone.crowd_density >= 60;
 
-              // Bezier Curves representing sectors of a rounded stadium
+              // Assign base path and transformation matrix
               let pathData = "";
+              let transform = "";
+
               if (zone.id === 'zone_1') {
-                // North Entrance Gate A (curved arch)
-                pathData = "M 190,55 Q 300,10 410,55 L 380,85 Q 300,50 220,85 Z";
+                // Gate A: North Outer
+                pathData = BASE_PATHS.zone_1;
               } else if (zone.id === 'zone_2') {
-                // South Entrance Gate B
-                pathData = "M 220,255 Q 300,290 380,255 L 410,285 Q 300,330 190,285 Z";
+                // Gate B: Mirrored vertically from Gate A across center Y=170
+                pathData = BASE_PATHS.zone_1;
+                transform = "translate(0,340) scale(1,-1)";
               } else if (zone.id === 'zone_3') {
-                // Left Wing Concourse West
-                pathData = "M 80,90 Q 150,115 175,230 Q 80,250 55,170 Z";
+                // Concourse West: Left Wing
+                pathData = BASE_PATHS.zone_3;
               } else if (zone.id === 'zone_4') {
-                // Right Wing Concourse East
-                pathData = "M 520,90 Q 450,115 425,230 Q 520,250 545,170 Z";
+                // Concourse East: Mirrored horizontally from Concourse West across center X=400
+                pathData = BASE_PATHS.zone_3;
+                transform = "translate(800,0) scale(-1,1)";
               } else if (zone.id === 'zone_5') {
-                // Grandstand North (Inner Top)
-                pathData = "M 210,95 L 390,95 Q 340,125 210,125 Z";
+                // Grandstand North: Inner Top
+                pathData = BASE_PATHS.zone_5;
               } else if (zone.id === 'zone_6') {
-                // Grandstand South (Inner Bottom)
-                pathData = "M 210,215 Q 340,215 390,245 L 210,245 Z";
+                // Grandstand South: Mirrored vertically from Grandstand North across center Y=170
+                pathData = BASE_PATHS.zone_5;
+                transform = "translate(0,340) scale(1,-1)";
               }
 
-              // Glow configurations depending on congestion
               const glowOpacity = isCritical ? 0.45 : isCongested ? 0.25 : 0.05;
-              const hoverGlow = isSelected ? 0.6 : 0.2;
 
               return (
                 <g 
@@ -189,10 +292,11 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                   className="cursor-pointer group" 
                   onClick={() => onSelectZone(zone)}
                 >
-                  {/* Glowing background duplicate path */}
+                  {/* Glowing background path for active alerts */}
                   {(isCongested || isSelected) && (
                     <motion.path
                       d={pathData}
+                      transform={transform}
                       fill={theme.color}
                       opacity={glowOpacity}
                       filter="url(#glow-effect)"
@@ -202,64 +306,55 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                     />
                   )}
 
-                  {/* Top transparent colored interactive segment */}
+                  {/* Dynamic translucent color fill segment */}
                   <path
                     d={pathData}
-                    fill={theme.color}
-                    opacity={isSelected ? 0.22 : 0.08}
-                    stroke={theme.color}
-                    strokeWidth={isSelected ? 2 : 1}
-                    className="transition-all duration-300 group-hover:opacity-20"
+                    transform={transform}
+                    fill={style.fill}
+                    stroke={style.stroke}
+                    strokeWidth={style.strokeWidth}
+                    className="transition-all duration-300 group-hover:fill-white/10"
                   />
                 </g>
               );
             })}
           </svg>
 
-          {/* HTML FLOATING PILL LABELS WITH BACKDROP BLUR */}
+          {/* DYNAMIC HTML FLOATING PILL LABELS WITH BACKDROP BLUR (PROPORTIONAL OFFSET MAPS) */}
           <div className="absolute inset-0 pointer-events-none">
             {Object.values(stadiumData).map((zone) => {
               const isSelected = selectedZone?.id === zone.id;
               const theme = getDensityTheme(zone.crowd_density);
+              const pos = labelPositions[zone.id];
 
-              let style = {};
-              let name = "";
-              if (zone.id === 'zone_1') {
-                style = { top: '23%', left: '50%' };
-                name = "Gate A";
-              } else if (zone.id === 'zone_2') {
-                style = { top: '77%', left: '50%' };
-                name = "Gate B";
-              } else if (zone.id === 'zone_3') {
-                style = { top: '50%', left: '19%' };
-                name = "Concourse W";
-              } else if (zone.id === 'zone_4') {
-                style = { top: '50%', left: '81%' };
-                name = "Concourse E";
-              } else if (zone.id === 'zone_5') {
-                style = { top: '35%', left: '50%' };
-                name = "Grandstand N";
-              } else if (zone.id === 'zone_6') {
-                style = { top: '65%', left: '50%' };
-                name = "Grandstand S";
-              }
+              // Convert viewBox (800x340) coordinates to responsive percentage values
+              const leftPercent = `${(pos.x / 800) * 100}%`;
+              const topPercent = `${(pos.y / 340) * 100}%`;
+
+              let labelName = "";
+              if (zone.id === 'zone_1') labelName = "Gate A";
+              else if (zone.id === 'zone_2') labelName = "Gate B";
+              else if (zone.id === 'zone_3') labelName = "Concourse W";
+              else if (zone.id === 'zone_4') labelName = "Concourse E";
+              else if (zone.id === 'zone_5') labelName = "Grandstand N";
+              else if (zone.id === 'zone_6') labelName = "Grandstand S";
 
               return (
                 <div
                   key={zone.id}
-                  style={style}
+                  style={{ top: topPercent, left: leftPercent }}
                   className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center transition-all duration-300"
                 >
                   <button
                     onClick={() => onSelectZone(zone)}
                     className={`pointer-events-auto rounded-full px-2.5 py-1 text-[8px] font-black tracking-widest uppercase flex items-center gap-1.5 backdrop-blur-md transition-all border duration-300 ${
                       isSelected
-                        ? 'bg-slate-950 text-slate-100 border-white/20 shadow-lg shadow-black/40 scale-105'
+                        ? 'bg-slate-950 text-slate-100 border-white/20 shadow-lg shadow-black/40 scale-105 ring-1 ring-teal-500/50'
                         : 'bg-slate-950/80 text-slate-400 border-white/[0.04] hover:text-slate-200'
                     }`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></span>
-                    {name}
+                    {labelName}
                   </button>
                 </div>
               );
@@ -312,7 +407,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                     : zone.crowd_density >= 60
                     ? 'bg-orange-500/10 text-orange-400 border-orange-500/25'
                     : zone.crowd_density >= 40
-                    ? 'bg-teal-500/10 text-teal-400 border-teal-500/25 font-bold'
+                    ? 'bg-teal-555/10 text-teal-400 border-teal-500/25 font-bold'
                     : 'bg-white/5 text-slate-400 border-white/5 font-normal'
                 }`}>
                   {theme.label}
@@ -342,7 +437,7 @@ export default function Heatmap({ stadiumData, selectedZone, onSelectZone, prefe
                   <span className="text-[8px] font-bold text-slate-400 block uppercase tracking-wider font-mono">
                     {zone.gate_queue_time_mins > 0 ? 'Wait Queue' : 'Access Node'}
                   </span>
-                  <span className="font-extrabold text-slate-350 mt-0.5 block truncate">
+                  <span className="font-extrabold text-slate-350 mt-0.5 block truncate font-mono">
                     {zone.gate_queue_time_mins > 0 
                       ? `${zone.gate_queue_time_mins} min delay` 
                       : zone.id === 'zone_3' || zone.id === 'zone_4'
