@@ -94,8 +94,14 @@ def run_commander_agent(trigger: str) -> tuple[str, list[dict], str]:
                 )
             )
         except Exception as e:
-            print(f"GenAI API Error: {e}")
-            reasoning = f"GenAI API Error encountered: {e}"
+            # Technical error logged server-side only
+            import traceback
+            print(f"--- SERVER-SIDE ERROR LOG ---")
+            print(f"Gemini API Execution Exception: {e}")
+            traceback.print_exc()
+            print(f"-----------------------------")
+            
+            reasoning = "Monitoring resumed — no action needed."
             return reasoning, tools_called, "API_ERROR"
             
         # Check if the model wants to call tools
@@ -135,8 +141,8 @@ def run_commander_agent(trigger: str) -> tuple[str, list[dict], str]:
                 )
             )
             
-        # Append the tool results as a user turn
-        contents.append(types.Content(role="user", parts=tool_response_parts))
+        # Append the tool results as a tool turn
+        contents.append(types.Content(role="tool", parts=tool_response_parts))
         
     return reasoning, tools_called, "SUCCESS"
 
