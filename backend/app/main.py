@@ -41,6 +41,12 @@ class FanQueryRequest(BaseModel):
 class SimulationToggleRequest(BaseModel):
     paused: bool
 
+class ResolvePendingRequest(BaseModel):
+    id: str
+
+class ToggleTimeoutRequest(BaseModel):
+    enabled: bool
+
 # Active WebSocket connections list
 class ConnectionManager:
     def __init__(self):
@@ -49,9 +55,14 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        # Send initial logs history on connection
+        # Send initial logs history and pending actions on connection
         logs = logger.get_logs()
-        await websocket.send_json({"type": "history", "logs": logs})
+        pending = logger.get_pending_actions()
+        await websocket.send_json({
+            "type": "history",
+            "logs": logs,
+            "pending": pending
+        })
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
@@ -67,8 +78,9 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # Hook the logger callback to WebSocket broadcast
-async def websocket_log_listener(new_log_entry: dict):
-    await manager.broadcast({"type": "new_log", "log": new_log_entry})
+async def websocket_log_listener(event: dict):
+    # logger.py now passes structured event dicts directly
+    await manager.broadcast(event)
 
 @app.on_event("startup")
 async def startup_event():
@@ -115,6 +127,98 @@ def get_decision_logs():
     Fetch all cached decision logs.
     """
     return logger.get_logs()
+
+# --- HUMAN-IN-THE-LOOP REST ENDPOINTS ---
+
+@app.get("/api/pending")
+def get_pending_actions():
+    """
+    Fetch all active pending actions.
+    """
+    return logger.get_pending_actions()
+
+@app.post("/api/pending/approve")
+def approve_pending_action(req: ResolvePendingRequest):
+    """
+    Approve and execute a proposed action.
+    """
+    action_id = req.id
+    action = logger.get_pending_action(action_id)
+    if not action or action["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Action not found or already resolved.")
+    
+    # Import TOOL_MAP to execute the tool
+    from .agent import TOOL_MAP
+    tool_name = action["tool_name"]
+    args = action["args"]
+    
+    try:
+        result = TOOL_MAP[tool_name](**args)
+    except Exception as e:
+        result = {"error": f"Tool execution failed: {e}"}
+        
+    # Mark resolved in logger
+    logger.resolve_pending_action(action_id, "approved")
+    
+    # Log successful execution in decision history
+    logger.add_log(
+        trigger=action["trigger"],
+        reasoning=f"[APPROVED BY STAFF] {action['reasoning']}",
+        tools_called=[{
+            "name": tool_name,
+            "args": args,
+            "result": result
+        }],
+        result=f"Action successfully executed by staff approval: {result}",
+        category=action["category"]
+    )
+    
+    return {"status": "success", "result": result}
+
+@app.post("/api/pending/dismiss")
+def dismiss_pending_action(req: ResolvePendingRequest):
+    """
+    Dismiss / reject a proposed action.
+    """
+    action_id = req.id
+    action = logger.get_pending_action(action_id)
+    if not action or action["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Action not found or already resolved.")
+        
+    # Mark resolved in logger
+    logger.resolve_pending_action(action_id, "dismissed")
+    
+    # Log dismissal in decision history
+    logger.add_log(
+        trigger=action["trigger"],
+        reasoning=f"[DISMISSED BY STAFF] {action['reasoning']}",
+        tools_called=[{
+            "name": action["tool_name"],
+            "args": action["args"],
+            "result": "DISMISSED_BY_STAFF"
+        }],
+        result="Action dismissed by operational staff.",
+        category=action["category"]
+    )
+    
+    return {"status": "success"}
+
+@app.get("/api/config")
+def get_config_settings():
+    """
+    Retrieve current control settings (like auto-timeout).
+    """
+    return {
+        "auto_timeout_enabled": config.auto_timeout_enabled
+    }
+
+@app.post("/api/config/auto-timeout")
+def toggle_auto_timeout(req: ToggleTimeoutRequest):
+    """
+    Toggle auto-timeout on/off.
+    """
+    config.auto_timeout_enabled = req.enabled
+    return {"status": "success", "auto_timeout_enabled": config.auto_timeout_enabled}
 
 @app.post("/api/fan/chat")
 def fan_chat(req: FanQueryRequest):

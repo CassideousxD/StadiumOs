@@ -10,3 +10,6 @@ TELEMETRY_TICK_RATE = int(os.getenv("TELEMETRY_TICK_RATE", "10"))
 # Check for API key and print a warning if missing
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY is not set. The GenAI features will not work properly.")
+
+# Config options for human-in-the-loop approval
+auto_timeout_enabled = False

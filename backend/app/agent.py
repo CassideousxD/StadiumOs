@@ -33,7 +33,8 @@ Operational Rules:
 2. If there is a free-text incident report, read it and take corresponding action. E.g., if a fan needs accessibility help, call `flag_accessibility_need`. If there is a crowd issue, reroute or alert.
 3. If you take a sustainability action (like adjusting cooling, optimizing power, or recycling due to calm conditions), log it using `log_sustainability_action`.
 4. You must always run `get_all_zones_summary` first to check the current stadium state before making routing decisions, unless the trigger already contains all necessary information.
-5. Keep your final response clear and professional, detailing:
+5. PREDICTIVE & PREVENTATIVE ACTIONS: You are provided with rate-of-change trend data. If a zone is currently under the 75% critical limit (e.g. 68%) but has a positive rate-of-change trend (e.g. rising at +4%/tick) indicating it will cross 75% soon, you MUST take preventative action! Proactively reroute fans to a stable/declining zone using `reroute_fans` and send a safety advisory before the threshold is breached.
+6. Keep your final response clear and professional, detailing:
    - What triggered your action
    - What your reasoning was
    - What tools you called and their outcomes.
@@ -118,7 +119,59 @@ def run_commander_agent(trigger: str) -> tuple[str, list[dict], str]:
             name = call.name
             args = dict(call.args) if call.args else {}
             
-            # Execute python tool function
+            # Check if this is a high-impact ACTION tool requiring approval
+            if name in ["reroute_fans", "send_multilingual_alert", "flag_accessibility_need", "log_sustainability_action"]:
+                import random
+                import asyncio
+                
+                pending_id = f"act_{random.randint(10000, 99999)}"
+                
+                # Determine trajectory categorization
+                cat = "routine"
+                if "predictive" in trigger.lower():
+                    cat = "predictive"
+                elif "alert" in trigger.lower() or "incident" in trigger.lower():
+                    cat = "reactive"
+                
+                # Formulate details
+                action_reason = reasoning
+                if not action_reason and response.text:
+                    action_reason = response.text
+                if not action_reason and response.candidates and response.candidates[0].content.parts:
+                    action_reason = response.candidates[0].content.parts[0].text
+                if not action_reason:
+                    action_reason = "AI proposed safety/efficiency adjustment."
+                
+                pending_record = {
+                    "id": pending_id,
+                    "trigger": trigger,
+                    "reasoning": action_reason,
+                    "tool_name": name,
+                    "args": args,
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "urgency": "CRITICAL" if "critical" in trigger.lower() or "incident" in trigger.lower() or "density" in trigger.lower() else "ROUTINE",
+                    "status": "pending",
+                    "category": cat
+                }
+                
+                from . import logger
+                logger.add_pending_action(pending_record)
+                
+                # Schedule auto-timeout approval if configured
+                from . import config
+                if config.auto_timeout_enabled:
+                    asyncio.create_task(auto_approve_after_delay(pending_id))
+                
+                reasoning = f"Proposed action: {name}({args}) is pending approval."
+                tools_called.append({
+                    "name": name,
+                    "args": args,
+                    "result": "AWAITING_APPROVAL",
+                    "pending_id": pending_id
+                })
+                return reasoning, tools_called, "PENDING_APPROVAL"
+            
+            # Execute python READ tool function (e.g. get_zone_status, etc.)
             if name in TOOL_MAP:
                 try:
                     result = TOOL_MAP[name](**args)
@@ -145,6 +198,39 @@ def run_commander_agent(trigger: str) -> tuple[str, list[dict], str]:
         contents.append(types.Content(role="tool", parts=tool_response_parts))
         
     return reasoning, tools_called, "SUCCESS"
+
+async def auto_approve_after_delay(pending_id: str):
+    """
+    Timer task that auto-executes critical actions after 30 seconds if unresolved.
+    """
+    await asyncio.sleep(30)
+    from . import logger
+    action = logger.get_pending_action(pending_id)
+    if action and action["status"] == "pending":
+        print(f"[AUTO-TIMEOUT] Auto-approving pending action: {pending_id}")
+        
+        tool_name = action["tool_name"]
+        args = action["args"]
+        
+        try:
+            result = TOOL_MAP[tool_name](**args)
+        except Exception as e:
+            result = {"error": f"Tool execution failed: {e}"}
+            
+        logger.resolve_pending_action(pending_id, "auto_approved")
+        
+        # Log auto-execution outcome
+        logger.add_log(
+            trigger=action["trigger"],
+            reasoning=f"[AUTO APPROVED BY TIMEOUT] {action['reasoning']}",
+            tools_called=[{
+                "name": tool_name,
+                "args": args,
+                "result": result
+            }],
+            result=f"Action auto-executed: {result}",
+            category=action["category"]
+        )
 
 def run_fan_agent(question: str) -> str:
     """

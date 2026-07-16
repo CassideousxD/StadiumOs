@@ -123,3 +123,119 @@ def test_genai_agent_orchestration_tool_execution(mock_tool_map, mock_client_cla
     
     # Verify generate_content was called twice
     assert mock_client.models.generate_content.call_count == 2
+
+
+# Test 3: Verify human-in-the-loop pending action creation, execution on approval, and prevention on dismissal.
+@mock.patch("app.agent.is_api_key_valid", return_value=True)
+@mock.patch("app.agent.genai.Client")
+def test_human_in_the_loop_pending_flow(mock_client_class, mock_key_valid):
+    from app import logger
+    
+    # Reset logger pending actions
+    logger.clear_pending_actions()
+    
+    mock_client = mock.MagicMock()
+    mock_client_class.return_value = mock_client
+    
+    # Mock LLM calls: proposes reroute_fans (ACTION tool)
+    mock_call = mock.MagicMock()
+    mock_call.name = "reroute_fans"
+    mock_call.args = {"from_zone": "zone_2", "to_zone": "zone_1", "reason": "Test congestion"}
+    
+    mock_candidate = mock.MagicMock()
+    mock_candidate.content = types.Content(role="model", parts=[])
+    
+    mock_response = mock.MagicMock()
+    mock_response.function_calls = [mock_call]
+    mock_response.candidates = [mock_candidate]
+    
+    mock_client.models.generate_content.return_value = mock_response
+    
+    # Trigger the agent
+    trigger = "Test Trigger"
+    reasoning, tools_called, status = run_commander_agent(trigger)
+    
+    # Assert it gets intercepted and marked PENDING_APPROVAL
+    assert status == "PENDING_APPROVAL"
+    assert len(tools_called) == 1
+    assert tools_called[0]["result"] == "AWAITING_APPROVAL"
+    
+    # Assert pending action record exists in logger
+    pending_list = logger.get_pending_actions()
+    assert len(pending_list) == 1
+    pending_action = pending_list[0]
+    assert pending_action["tool_name"] == "reroute_fans"
+    assert pending_action["args"] == {"from_zone": "zone_2", "to_zone": "zone_1", "reason": "Test congestion"}
+    assert pending_action["status"] == "pending"
+    
+    # Mock the tool call execution
+    from app.agent import TOOL_MAP
+    with mock.patch.dict(TOOL_MAP, {"reroute_fans": mock.MagicMock(return_value={"status": "Success"})}):
+        # Now simulate approving the pending action via main.py code path
+        action_id = pending_action["id"]
+        from app.main import approve_pending_action, ResolvePendingRequest
+        req = ResolvePendingRequest(id=action_id)
+        res = approve_pending_action(req)
+        
+        assert res["status"] == "success"
+        # Verify the mock tool was executed
+        assert TOOL_MAP["reroute_fans"].call_count == 1
+        TOOL_MAP["reroute_fans"].assert_called_with(from_zone="zone_2", to_zone="zone_1", reason="Test congestion")
+        
+        # Verify pending action is resolved (status updated, no longer returned by get_pending_actions)
+        assert len(logger.get_pending_actions()) == 0
+
+
+# Test 4: Verify trend-based predictive alerts are triggered before crossing the 75% threshold
+import asyncio
+
+@mock.patch("app.telemetry.read_stadium_status")
+@mock.patch("app.telemetry.write_stadium_status")
+@mock.patch("app.telemetry.read_transport_status", return_value=MOCK_TRANSPORT)
+@mock.patch("app.telemetry.write_transport_status")
+@mock.patch("app.telemetry.run_commander_agent")
+def test_predictive_alert_on_rising_trend(
+    mock_run_agent, mock_write_trans, mock_read_trans, mock_write_stadium, mock_read_stadium
+):
+    from app import telemetry
+    
+    # Reset history & seed with a synthetic rising trend under 75% (50% -> 58% -> 66%)
+    telemetry._density_history = {"zone_1": [50, 58, 66]}
+    
+    # Current reading is 74% (still under 75%), but rising +8% per tick.
+    # Projected next tick is 82% (crosses 75% critical threshold)
+    mock_read_stadium.return_value = {
+        "zone_1": {
+            "id": "zone_1",
+            "name": "Gate A (North Entrance)",
+            "crowd_density": 74,
+            "gate_queue_time_mins": 0,
+            "weather": {"temp_c": 24, "condition": "Sunny", "humidity_percent": 60},
+            "incident_reports": [],
+            "alerts": []
+        }
+    }
+    
+    mock_run_agent.return_value = ("Proposed action", [], "SUCCESS")
+    
+    # We patch random.choice to return 0 so the density stays exactly at 74% on this simulated tick
+    with mock.patch("random.choice", return_value=0):
+        # We also patch asyncio.sleep to break the infinite loop after 1 tick
+        async def mock_sleep(seconds):
+            raise GeneratorExit()
+            
+        with mock.patch("asyncio.sleep", side_effect=mock_sleep):
+            try:
+                # Run the loop (it will run exactly 1 iteration and then exit when sleep is called)
+                asyncio.run(telemetry.telemetry_simulation_loop())
+            except GeneratorExit:
+                pass
+                
+    # Verify that run_commander_agent was called
+    assert mock_run_agent.call_count == 1
+    call_args = mock_run_agent.call_args[0][0]
+    
+    # Verify that the trigger is indeed predictive and contains trajectory trend text
+    assert "Predictive Occupancy Alert" in call_args
+    assert "rising at an average of +8.0% per tick" in call_args
+    assert "Projected to cross critical threshold" in call_args

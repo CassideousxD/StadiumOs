@@ -10,6 +10,8 @@ export default function App() {
   const [stadiumData, setStadiumData] = useState({});
   const [transportData, setTransportData] = useState({});
   const [logs, setLogs] = useState([]);
+  const [pendingActions, setPendingActions] = useState([]);
+  const [autoTimeout, setAutoTimeout] = useState(false);
   const [simulationPaused, setSimulationPaused] = useState(false);
   const [apiKeyConfigured, setApiKeyConfigured] = useState(true);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -21,7 +23,7 @@ export default function App() {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
     if (mediaQuery.matches) {
-      setShowSplash(false); // Skip intro if prefers-reduced-motion is active
+      setShowSplash(false);
     }
     
     const listener = (e) => {
@@ -56,7 +58,7 @@ export default function App() {
     window.history.pushState({}, '', `/${tab}`);
   };
 
-  // 3. Fetch active telemetry status
+  // 3. Fetch active telemetry status and config
   const fetchStatus = async () => {
     try {
       const res = await fetch('http://localhost:8000/api/status');
@@ -77,13 +79,26 @@ export default function App() {
     }
   };
 
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/config');
+      if (res.ok) {
+        const data = await res.json();
+        setAutoTimeout(data.auto_timeout_enabled);
+      }
+    } catch (err) {
+      console.error('Error fetching config:', err);
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
+    fetchConfig();
     const interval = setInterval(fetchStatus, 4000);
     return () => clearInterval(interval);
   }, [selectedZone]);
 
-  // 4. WebSocket listener for live AI reasoning
+  // 4. WebSocket listener for live AI reasoning and pending actions
   useEffect(() => {
     let ws;
     let reconnectTimeout;
@@ -99,9 +114,15 @@ export default function App() {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'history') {
-            setLogs(data.logs);
+            if (data.logs) setLogs(data.logs);
+            if (data.pending) setPendingActions(data.pending);
           } else if (data.type === 'new_log') {
             setLogs(prev => [...prev, data.log]);
+          } else if (data.type === 'new_pending') {
+            setPendingActions(prev => [...prev, data.action]);
+          } else if (data.type === 'resolved_pending') {
+            setPendingActions(prev => prev.filter(act => act.id !== data.id));
+            fetchStatus(); // Refetch status to sync changes immediately
           }
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
@@ -165,10 +186,52 @@ export default function App() {
       });
       if (res.ok) {
         setLogs([]);
+        setPendingActions([]);
         fetchStatus();
       }
     } catch (err) {
       console.error('Error resetting simulation:', err);
+    }
+  };
+
+  // HITL Action Resolvers
+  const handleApproveAction = async (actionId) => {
+    try {
+      await fetch('http://localhost:8000/api/pending/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: actionId })
+      });
+    } catch (err) {
+      console.error('Error approving action:', err);
+    }
+  };
+
+  const handleDismissAction = async (actionId) => {
+    try {
+      await fetch('http://localhost:8000/api/pending/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: actionId })
+      });
+    } catch (err) {
+      console.error('Error dismissing action:', err);
+    }
+  };
+
+  const handleToggleAutoTimeout = async () => {
+    const nextState = !autoTimeout;
+    try {
+      const res = await fetch('http://localhost:8000/api/config/auto-timeout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: nextState })
+      });
+      if (res.ok) {
+        setAutoTimeout(nextState);
+      }
+    } catch (err) {
+      console.error('Error toggling auto timeout config:', err);
     }
   };
 
@@ -232,7 +295,7 @@ export default function App() {
       scale: 1,
       transition: {
         duration: 0.32,
-        ease: [0.16, 1, 0.3, 1] // Custom ease-out curve
+        ease: [0.16, 1, 0.3, 1]
       }
     },
     exit: {
@@ -278,7 +341,7 @@ export default function App() {
                 <h1 className="text-base font-extrabold tracking-tight text-slate-100 flex items-center gap-1.5 font-display">
                   Stadium<span className="text-teal-400">OS</span>
                 </h1>
-                <span className="text-[9px] text-slate-400 font-bold tracking-[0.18em] block uppercase">
+                <span className="text-[9px] text-slate-400 font-bold tracking-[0.18em] block uppercase font-mono">
                   FIFA World Cup 2026 AI Control Tower
                 </span>
               </div>
@@ -309,7 +372,7 @@ export default function App() {
             </nav>
           </header>
 
-          {/* Main Container with custom Tab transitions */}
+          {/* Main Container */}
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-1.5 relative z-10">
             <AnimatePresence mode="wait">
               <motion.div
@@ -325,6 +388,11 @@ export default function App() {
                     stadiumData={stadiumData}
                     transportData={transportData}
                     logs={logs}
+                    pendingActions={pendingActions}
+                    autoTimeout={autoTimeout}
+                    onToggleAutoTimeout={handleToggleAutoTimeout}
+                    onApproveAction={handleApproveAction}
+                    onDismissAction={handleDismissAction}
                     simulationPaused={simulationPaused}
                     apiKeyConfigured={apiKeyConfigured}
                     selectedZone={selectedZone}
@@ -345,7 +413,7 @@ export default function App() {
             </AnimatePresence>
           </main>
 
-          <footer className="py-5 text-center border-t border-white/[0.03] text-[9px] text-slate-500 font-extrabold tracking-[0.2em] bg-slate-950/20 backdrop-blur-md relative z-10 uppercase mt-8">
+          <footer className="py-5 text-center border-t border-white/[0.03] text-[9px] text-slate-500 font-extrabold tracking-[0.2em] bg-slate-950/20 backdrop-blur-md relative z-10 uppercase mt-8 font-mono">
             STADIUMOS © 2026 • FIFA WORLD CUP stadium MANAGEMENT AI AGENT SYSTEM
           </footer>
         </motion.div>

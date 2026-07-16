@@ -6,6 +6,10 @@ from .agent import run_commander_agent
 from . import logger
 from . import config
 
+# Rolling history of crowd densities (up to 6 ticks)
+# Format: {zone_id: [density1, density2, ...]}
+_density_history = {}
+
 # List of pending incidents to inject on the next loop tick
 _pending_incidents = []
 
@@ -61,8 +65,26 @@ async def telemetry_simulation_loop():
             write_stadium_status(stadium)
             write_transport_status(transport)
             
+            # Record density history
+            for zone_id, zone_data in stadium.items():
+                if zone_id not in _density_history:
+                    _density_history[zone_id] = []
+                _density_history[zone_id].append(zone_data["crowd_density"])
+                if len(_density_history[zone_id]) > 6:
+                    _density_history[zone_id].pop(0)
+                    
+            # Compute average rate of change per zone
+            trends = {}
+            for zone_id, history in _density_history.items():
+                if len(history) < 2:
+                    trends[zone_id] = 0.0
+                else:
+                    deltas = [history[i] - history[i-1] for i in range(1, len(history))]
+                    trends[zone_id] = sum(deltas) / len(deltas)
+            
             # 3. Determine if there's an incident or threshold alert trigger
             trigger = ""
+            is_predictive = False
             
             # Scenario A: Pending Incident injection
             if _pending_incidents:
@@ -96,29 +118,70 @@ async def telemetry_simulation_loop():
                         
                 if overcrowded_zone:
                     trigger = f"Occupancy Alert: {stadium[overcrowded_zone]['name']} crowd density at {stadium[overcrowded_zone]['crowd_density']}% (exceeds warning threshold 75%)"
+                
+                # Scenario C: Trend-Based Predictive Alert (projects crossing 75% in <= 3 ticks)
+                else:
+                    predictive_zone = None
+                    for z_id, z_data in stadium.items():
+                        current_density = z_data["crowd_density"]
+                        trend = trends.get(z_id, 0.0)
+                        if current_density <= 75 and trend > 0:
+                            projected = current_density + trend * 3
+                            if projected >= 75:
+                                predictive_zone = z_id
+                                break
+                    
+                    if predictive_zone:
+                        current_density = stadium[predictive_zone]["crowd_density"]
+                        trend = trends[predictive_zone]
+                        ticks_left = (75 - current_density) / trend if trend > 0 else 0
+                        trigger = (
+                            f"Predictive Occupancy Alert: {stadium[predictive_zone]['name']} "
+                            f"crowd density is currently at {current_density}% but rising at an average of "
+                            f"{trend:+.1f}% per tick. Projected to cross critical threshold (75%) in ~{ticks_left:.1f} ticks."
+                        )
+                        is_predictive = True
             
             # 4. Agent Decider Loop (Smart Filtering)
             if trigger:
-                print(f"Commander Agent invoked! Trigger: {trigger}")
-                reasoning, tools_called, status = run_commander_agent(trigger)
+                # Append trajectory trend context for all zones into the agent context
+                trend_context_str = "\nZone Telemetry Trajectory Trends (average change per tick):\n"
+                for z_id, z_data in stadium.items():
+                    trend_val = trends.get(z_id, 0.0)
+                    trend_context_str += f"- {z_data['name']}: {trend_val:+.1f}%/tick (current: {z_data['crowd_density']}%)\n"
+                
+                agent_trigger = trigger + "\n" + trend_context_str
+                category = "predictive" if is_predictive else "reactive"
+                
+                print(f"Commander Agent invoked ({category.upper()})! Trigger: {trigger}")
+                reasoning, tools_called, status = run_commander_agent(agent_trigger)
                 logger.add_log(
                     trigger=trigger,
                     reasoning=reasoning,
                     tools_called=tools_called,
-                    result=reasoning
+                    result=reasoning,
+                    category=category
                 )
             else:
                 # 5. Routine Baseline (Runs every 4 ticks to show active monitor updates or logs)
                 tick_counter += 1
                 if tick_counter >= 4:
                     trigger = "Routine Scan: All stadium zones occupancy levels within safe limits."
+                    
+                    trend_context_str = "\nZone Telemetry Trajectory Trends (average change per tick):\n"
+                    for z_id, z_data in stadium.items():
+                        trend_val = trends.get(z_id, 0.0)
+                        trend_context_str += f"- {z_data['name']}: {trend_val:+.1f}%/tick (current: {z_data['crowd_density']}%)\n"
+                    
+                    agent_trigger = trigger + "\n" + trend_context_str
                     print("Commander Agent running routine efficiency optimization...")
-                    reasoning, tools_called, status = run_commander_agent(trigger)
+                    reasoning, tools_called, status = run_commander_agent(agent_trigger)
                     logger.add_log(
                         trigger=trigger,
                         reasoning=reasoning,
                         tools_called=tools_called,
-                        result=reasoning
+                        result=reasoning,
+                        category="routine"
                     )
                     tick_counter = 0
                     

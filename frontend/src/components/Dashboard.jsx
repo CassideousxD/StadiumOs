@@ -7,6 +7,11 @@ export default function Dashboard({
   stadiumData,
   transportData,
   logs,
+  pendingActions,
+  autoTimeout,
+  onToggleAutoTimeout,
+  onApproveAction,
+  onDismissAction,
   simulationPaused,
   apiKeyConfigured,
   selectedZone,
@@ -59,13 +64,13 @@ export default function Dashboard({
                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${simulationPaused ? 'bg-amber-500' : 'bg-teal-500'}`}></span>
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${simulationPaused ? 'bg-amber-500' : 'bg-teal-500'}`}></span>
               </span>
-              <span className="text-[11px] font-bold text-slate-455 uppercase tracking-wider font-mono">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                 TELEMETRY FEED: {simulationPaused ? 'PAUSED' : 'LIVE (10s intervals)'}
               </span>
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-3.5 items-center">
             <button
               onClick={onToggleSimulation}
               className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all duration-300 uppercase tracking-widest focus-visible:ring-1 focus-visible:ring-teal-500/50 ${
@@ -83,12 +88,25 @@ export default function Dashboard({
             >
               🔄 Reset DB
             </button>
+
+            {/* HUMAN-IN-THE-LOOP AUTO TIMEOUT APPROVAL TOGGLE */}
+            <div className="h-4 w-[1px] bg-white/10 mx-1"></div>
+            
+            <label className="text-[10px] text-slate-350 hover:text-slate-250 transition-colors font-bold font-mono cursor-pointer flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={autoTimeout}
+                onChange={onToggleAutoTimeout}
+                className="rounded border-white/10 bg-slate-950 text-teal-500 focus:ring-teal-500/50 focus:ring-offset-0"
+              />
+              Auto-Approve (30s)
+            </label>
           </div>
         </div>
 
         {/* Selected Zone quick status overlay */}
         {selectedZone && (
-          <div className="text-[10px] bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1 text-slate-450 flex items-center gap-1.5 font-sans">
+          <div className="text-[10px] bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1 text-slate-400 flex items-center gap-1.5 font-sans">
             <span className="font-bold text-slate-300">ACTIVE DETECTOR:</span> {selectedZone.name} ({selectedZone.crowd_density}% cap)
           </div>
         )}
@@ -109,10 +127,10 @@ export default function Dashboard({
 
           {/* Incident Injector Panel */}
           <div className="glass-panel p-5 rounded-2xl border border-white/[0.04] shadow-2xl bg-slate-950/15">
-            <h3 className="text-[10px] font-black text-slate-500 mb-1.5 flex items-center gap-1.5 uppercase tracking-widest font-mono">
+            <h3 className="text-[10px] font-black text-slate-400 mb-1.5 flex items-center gap-1.5 uppercase tracking-widest font-mono">
               <span>🚨</span> OPERATIONAL INCIDENT INJECTOR
             </h3>
-            <p className="text-[11px] text-slate-400 mb-3.5 leading-normal">
+            <p className="text-[11px] text-slate-450 mb-3.5 leading-normal font-sans">
               Type in a live emergency report (e.g., <i>"Bottleneck forming at Gate B entrance"</i> or <i>"visitor needs wheelchair dispatch in Grandstand North"</i>) to trigger the Commander AI Agent's real-time reasoning and tool response.
             </p>
 
@@ -138,7 +156,7 @@ export default function Dashboard({
 
         {/* Right Side: Sidebar containing Transport & Logs unified in one card */}
         <div className="xl:col-span-1 glass-panel p-5 rounded-2xl border border-white/[0.04] shadow-2xl flex flex-col justify-between min-h-[580px] xl:h-[720px] bg-slate-950/15 overflow-hidden">
-          <div className="h-[230px] shrink-0 overflow-hidden">
+          <div className="h-[210px] shrink-0 overflow-hidden">
             <TransportPanel transportData={transportData} prefersReduced={prefersReduced} />
           </div>
           
@@ -146,7 +164,13 @@ export default function Dashboard({
           <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent my-3.5 shrink-0"></div>
           
           <div className="flex-1 overflow-hidden">
-            <DecisionFeed logs={logs} prefersReduced={prefersReduced} />
+            <DecisionFeed 
+              logs={logs} 
+              pendingActions={pendingActions}
+              onApprove={onApproveAction}
+              onDismiss={onDismissAction}
+              prefersReduced={prefersReduced} 
+            />
           </div>
         </div>
       </div>
