@@ -3,28 +3,28 @@
     "route_id": "shuttle_a",
     "name": "Shuttle Bus A (West Terminal)",
     "status": "Normal",
-    "load_percentage": 66,
-    "estimated_wait_time_mins": 7
+    "load_percentage": 56,
+    "estimated_wait_time_mins": 5
   },
   "shuttle_b": {
     "route_id": "shuttle_b",
     "name": "Shuttle Bus B (East Terminal)",
     "status": "Normal",
-    "load_percentage": 58,
+    "load_percentage": 52,
     "estimated_wait_time_mins": 4
   },
   "metro_line_1": {
     "route_id": "metro_line_1",
     "name": "Metro Line 1 (Express Train)",
     "status": "Normal",
-    "load_percentage": 77,
-    "estimated_wait_time_mins": 7
+    "load_percentage": 73,
+    "estimated_wait_time_mins": 8
   },
   "park_ride_express": {
     "route_id": "park_ride_express",
     "name": "Park & Ride Express",
     "status": "Normal",
-    "load_percentage": 18,
-    "estimated_wait_time_mins": 1
+    "load_percentage": 20,
+    "estimated_wait_time_mins": 3
   }
 }
