@@ -45,6 +45,24 @@ graph TD
 
 ---
 
+## ⚡ Key Capabilities: Human-in-the-Loop & Predictive Intelligence
+
+### 1. Human-in-the-Loop (HITL) Action Approvals
+StadiumOS splits tools into two categories:
+*   **READ Tools**: `get_zone_status`, `get_all_zones_summary`, and `get_transport_status` execute immediately without restrictions.
+*   **ACTION Tools**: `reroute_fans`, `send_multilingual_alert`, `flag_accessibility_need`, and `log_sustainability_action` require explicit staff approval.
+*   **Proposals Flow**: When the agent wants to trigger an ACTION tool, the request is intercepted. A pending proposal is cached on the backend and pushed to the Control Tower UI via WebSockets.
+*   **Interactive Cards**: Proposals appear at the top of the AI Decision Log with an amber pulsing border, a detailed reasoning block, and action parameters. Operators can click **Approve** (executes tool and logs execution) or **Override/Dismiss** (discards proposal).
+*   **Auto-Timeout Toggle**: The dashboard includes an option to toggle `Auto-Approve (30s)`. When active, critical safety proposals automatically execute after 30 seconds of inactivity (logged as an auto-approval).
+
+### 2. Trend-Based Predictive Alerts
+*   **Rolling History**: The backend maintains a sliding window of the last 6 telemetry ticks per zone.
+*   **Rate-of-Change Calculations**: Calculates the average crowd density delta per tick. This rate-of-change trend matrix is injected into the agent's prompts alongside the current snapshot.
+*   **Trajectory-Based Triggers**: If a zone is under the critical 75% limit (e.g. 68%) but rising at a rate (e.g. +4%/tick) projecting it will breach the limit within 3 ticks, the system generates a **Predictive Occupancy Alert** trigger.
+*   **Visual Log Tags**: Logs and pending cards are clearly tagged as `🔮 PREDICTIVE` (preventative foresight action) or `🚨 REACTIVE` (reacting to a current incident or breach).
+
+---
+
 ## 🛠️ Project Setup
 
 ### Prerequisites
@@ -105,24 +123,12 @@ Execute the unit test suite inside the root directory:
 
 ## ⚡ Worked Example: Telemetry Spike -> Agent Decision Trace
 
-1. **Telemetry Spike**: The background simulation tick increases the crowd density in `Gate B (South Entrance)` to **82%**, crossing the **75% warning threshold**.
-2. **Trigger Detected**: The background task registers the condition and issues a trigger to the Commander agent:
-   > *"Occupancy Alert: Gate B (South Entrance) crowd density at 82% (exceeds threshold 75%)"*
-3. **Agent Reasoning**: The agent receives the alert, runs its routine `get_all_zones_summary()` to identify safe routing destinations (finding `Concourse East` at 35% density), and formulates its plan.
-4. **Tool Execution**: The Commander agent executes:
-   - `reroute_fans(from_zone="zone_2", to_zone="zone_4", reason="Overcrowding at Gate B")`
-   - `send_multilingual_alert(zone_id="zone_2", message="Crowd congestion warning. Please check nearby screens.", languages=["es", "fr"])`
-5. **UI Update**: The database updates. In the UI, the heatmap colors for Gate B drop down, and the terminal log streams the trace via WebSockets:
-   ```json
-   {
-     "trigger": "Occupancy Alert: Gate B (South Entrance) crowd density at 82%",
-     "reasoning": "Detected crowd density crossing 75% in Gate B. I have initiated crowd diversion to Concourse East and broadcasted multilingual safety warnings to Gate B.",
-     "tools_called": [
-       { "name": "reroute_fans", "args": { "from_zone": "zone_2", "to_zone": "zone_4" } },
-       { "name": "send_multilingual_alert", "args": { "zone_id": "zone_2", "languages": ["es", "fr"] } }
-     ]
-   }
-   ```
+1.  **Rising Trend**: A zone's crowd density rises steadily over successive ticks: 50% $\to$ 58% $\to$ 66% $\to$ 74%.
+2.  **Predictive Trigger Detected**: The telemetry processor calculates a $+8.0\%/\text{tick}$ trend, projecting a critical breach in $\approx 0.1$ ticks. It fires a `Predictive Occupancy Alert` to the agent.
+3.  **Agent Reasoning**: The agent decides to take preventative action before the limit is crossed.
+4.  **HITL Interception**: The agent requests `reroute_fans()`. The backend intercepts it, generates a pending proposal, and pushes it to the UI.
+5.  **UI Interaction**: A `🔮 PREDICTIVE PROPOSAL` card is displayed at the top of the feed. The operator reviews it and clicks **Approve**.
+6.  **Tool Execution**: The tool executes. The decision log is appended with a `[APPROVED BY STAFF]` header.
 
 ---
 
