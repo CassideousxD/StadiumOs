@@ -14,7 +14,7 @@ from .tools.db_helper import read_stadium_status, read_transport_status, write_s
 app = FastAPI(title="StadiumOS API", description="Control Tower & Fan Assistant Telemetry API")
 
 # Configure CORS
-allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+allowed_origins = os.getenv("CORS_ORIGINS", os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

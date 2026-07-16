@@ -5,7 +5,7 @@ import FanInterface from './components/FanInterface';
 import SplashScreen from './components/SplashScreen';
 
 // Dynamic deployment endpoints based on Vite environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const cleanBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '');
 const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
 const wsUrl = `${wsProtocol}://${cleanBaseUrl}/ws/logs`;
