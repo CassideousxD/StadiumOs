@@ -20,27 +20,27 @@ In high-stakes sports operations like the FIFA World Cup, traditional dashboards
 ```mermaid
 graph TD
     subgraph Frontend [React + Tailwind CSS]
-        UI[Dashboard / Control Tower]
-        Fan[Fan Chat Portal]
+        UI["Dashboard / Control Tower"]
+        Fan["Fan Chat Portal"]
     end
 
     subgraph Backend [Python FastAPI]
-        API[FastAPI Endpoints]
-        WS[WebSocket Log Streamer]
-        Tele[Simulated Telemetry Thread]
-        Agent[Commander Agent / Gemini API]
-        Tools[Single-Responsibility Tools]
-        DB[(In-Memory JSON Mock DB)]
+        API["FastAPI Endpoints"]
+        WS["WebSocket Log Streamer"]
+        Tele["Simulated Telemetry Thread"]
+        Agent["Commander Agent / Gemini API"]
+        Tools["Single-Responsibility Tools"]
+        DB[("In-Memory JSON Mock DB")]
     end
 
-    Tele -- Updates -- DB
-    Tele -- Telemetry Trigger -- Agent
-    Agent -- Calls -- Tools
-    Tools -- Modifies -- DB
-    Agent -- Logs Decision -- WS
-    WS -- Real-time Stream -- UI
-    Fan -- REST -- API
-    API -- Reads -- DB
+    Tele -->|Updates| DB
+    Tele -->|"Telemetry Trigger"| Agent
+    Agent -->|Calls| Tools
+    Tools -->|Modifies| DB
+    Agent -->|"Logs Decision"| WS
+    WS -->|"Real-time Stream"| UI
+    Fan -->|REST| API
+    API -->|Reads| DB
 ```
 
 ---
