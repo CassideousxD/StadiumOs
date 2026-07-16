@@ -30,8 +30,10 @@ export default function FanInterface({ stadiumData, onRefresh, prefersReduced })
     setChatHistory(prev => [...prev, { sender: 'user', text: query, timestamp: new Date() }]);
     setLoading(true);
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
     try {
-      const res = await fetch('http://localhost:8000/api/fan/chat', {
+      const res = await fetch(`${API_BASE_URL}/api/fan/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: query })

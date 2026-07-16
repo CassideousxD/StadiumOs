@@ -19,6 +19,8 @@ export default function Dashboard({
   onToggleSimulation,
   onInjectIncident,
   onResetSimulation,
+  onGenerateReport,
+  onExportLogs,
   prefersReduced
 }) {
   const [incidentText, setIncidentText] = useState('');
@@ -87,6 +89,14 @@ export default function Dashboard({
               className="text-[9px] font-black bg-slate-950/60 hover:bg-slate-900/60 text-slate-400 hover:text-slate-200 px-3 py-1.5 border border-white/5 rounded-lg transition-all tracking-widest uppercase focus-visible:ring-1 focus-visible:ring-teal-500/50"
             >
               🔄 Reset DB
+            </button>
+
+            {/* AI-GENERATED OPERATIONS SHIFT REPORT BUTTON */}
+            <button
+              onClick={onGenerateReport}
+              className="text-[9px] font-black bg-gradient-to-r from-teal-750 to-emerald-750 hover:from-teal-650 hover:to-emerald-650 text-white px-3.5 py-1.5 border border-teal-600/20 rounded-lg transition-all tracking-widest uppercase shadow-md shadow-teal-950/20 focus-visible:ring-1 focus-visible:ring-teal-500/50"
+            >
+              📊 Generate Shift Report
             </button>
 
             {/* HUMAN-IN-THE-LOOP AUTO TIMEOUT APPROVAL TOGGLE */}
@@ -169,6 +179,7 @@ export default function Dashboard({
               pendingActions={pendingActions}
               onApprove={onApproveAction}
               onDismiss={onDismissAction}
+              onExportLogs={onExportLogs}
               prefersReduced={prefersReduced} 
             />
           </div>

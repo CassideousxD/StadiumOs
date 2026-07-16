@@ -4,6 +4,12 @@ import Dashboard from './components/Dashboard';
 import FanInterface from './components/FanInterface';
 import SplashScreen from './components/SplashScreen';
 
+// Dynamic deployment endpoints based on Vite environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const cleanBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '');
+const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
+const wsUrl = `${wsProtocol}://${cleanBaseUrl}/ws/logs`;
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('control-tower'); // 'control-tower' | 'fan'
@@ -17,6 +23,11 @@ export default function App() {
   const [selectedZone, setSelectedZone] = useState(null);
   const [loading, setLoading] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  // Shift Report State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [shiftReport, setShiftReport] = useState(null);
 
   // 1. Accessibility: Detect prefers-reduced-motion
   useEffect(() => {
@@ -61,7 +72,7 @@ export default function App() {
   // 3. Fetch active telemetry status and config
   const fetchStatus = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/status');
+      const res = await fetch(`${API_BASE_URL}/api/status`);
       if (!res.ok) throw new Error('API server returned error');
       const data = await res.json();
       setStadiumData(data.stadium);
@@ -81,7 +92,7 @@ export default function App() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/config');
+      const res = await fetch(`${API_BASE_URL}/api/config`);
       if (res.ok) {
         const data = await res.json();
         setAutoTimeout(data.auto_timeout_enabled);
@@ -104,7 +115,7 @@ export default function App() {
     let reconnectTimeout;
 
     const connectWebSocket = () => {
-      ws = new WebSocket('ws://localhost:8000/ws/logs');
+      ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         console.log('Connected to StadiumOS log stream');
@@ -150,7 +161,7 @@ export default function App() {
   const toggleSimulation = async () => {
     const nextState = !simulationPaused;
     try {
-      const res = await fetch('http://localhost:8000/api/simulation/toggle', {
+      const res = await fetch(`${API_BASE_URL}/api/simulation/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paused: nextState })
@@ -165,7 +176,7 @@ export default function App() {
 
   const injectIncident = async (description) => {
     try {
-      const res = await fetch('http://localhost:8000/api/incident', {
+      const res = await fetch(`${API_BASE_URL}/api/incident`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description })
@@ -181,7 +192,7 @@ export default function App() {
   const resetSimulation = async () => {
     if (!window.confirm('Are you sure you want to reset all stadium telemetry and AI log history?')) return;
     try {
-      const res = await fetch('http://localhost:8000/api/reset', {
+      const res = await fetch(`${API_BASE_URL}/api/reset`, {
         method: 'POST'
       });
       if (res.ok) {
@@ -197,7 +208,7 @@ export default function App() {
   // HITL Action Resolvers
   const handleApproveAction = async (actionId) => {
     try {
-      await fetch('http://localhost:8000/api/pending/approve', {
+      await fetch(`${API_BASE_URL}/api/pending/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: actionId })
@@ -209,7 +220,7 @@ export default function App() {
 
   const handleDismissAction = async (actionId) => {
     try {
-      await fetch('http://localhost:8000/api/pending/dismiss', {
+      await fetch(`${API_BASE_URL}/api/pending/dismiss`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: actionId })
@@ -222,7 +233,7 @@ export default function App() {
   const handleToggleAutoTimeout = async () => {
     const nextState = !autoTimeout;
     try {
-      const res = await fetch('http://localhost:8000/api/config/auto-timeout', {
+      const res = await fetch(`${API_BASE_URL}/api/config/auto-timeout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: nextState })
@@ -233,6 +244,72 @@ export default function App() {
     } catch (err) {
       console.error('Error toggling auto timeout config:', err);
     }
+  };
+
+  // Exporters & Generators
+  const handleExportLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logs/export`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `stadium_os_decision_audit_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Error exporting logs:', err);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    setGeneratingReport(true);
+    setShowReportModal(true);
+    setShiftReport(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/shift-report`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShiftReport(data);
+      } else {
+        throw new Error('Failed to generate operational report.');
+      }
+    } catch (err) {
+      console.error('Error generating shift report:', err);
+      setShiftReport({
+        overview: `Failed to compile shift logs: ${err.message}`,
+        incidents: 'N/A',
+        actions: 'N/A',
+        sustainability: 'N/A'
+      });
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const copyReportToClipboard = () => {
+    if (!shiftReport) return;
+    const text = `STADIUMOS SHIFT OPERATIONS REPORT\n==================================\n\nOVERVIEW:\n${shiftReport.overview}\n\nINCIDENTS HANDLED:\n${shiftReport.incidents}\n\nACTIONS RECORDED:\n${shiftReport.actions}\n\nSUSTAINABILITY HIGHLIGHTS:\n${shiftReport.sustainability}`;
+    navigator.clipboard.writeText(text);
+    alert('Shift report copied to clipboard!');
+  };
+
+  const downloadReportText = () => {
+    if (!shiftReport) return;
+    const text = `STADIUMOS SHIFT OPERATIONS REPORT\n==================================\n\nOVERVIEW:\n${shiftReport.overview}\n\nINCIDENTS HANDLED:\n${shiftReport.incidents}\n\nACTIONS RECORDED:\n${shiftReport.actions}\n\nSUSTAINABILITY HIGHLIGHTS:\n${shiftReport.sustainability}`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stadium_os_shift_report_${new Date().toISOString().slice(0, 10)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // SKELETON LOADING STATE
@@ -400,6 +477,8 @@ export default function App() {
                     onToggleSimulation={toggleSimulation}
                     onInjectIncident={injectIncident}
                     onResetSimulation={resetSimulation}
+                    onGenerateReport={handleGenerateReport}
+                    onExportLogs={handleExportLogs}
                     prefersReduced={prefersReducedMotion}
                   />
                 ) : (
@@ -412,6 +491,110 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
           </main>
+
+          {/* AI SHIFT REPORT MODAL */}
+          <AnimatePresence>
+            {showReportModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                  className="bg-[#0D0D18] border border-teal-500/20 max-w-2xl w-full rounded-2xl overflow-hidden shadow-2xl"
+                >
+                  {/* Modal Header */}
+                  <div className="bg-gradient-to-r from-[#0F5132]/30 to-[#14B8A6]/30 px-6 py-4 border-b border-white/5 flex justify-between items-center">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-slate-100 flex items-center gap-2 font-mono">
+                      <span>📊</span> AI-Generated Operations Shift Report
+                    </h2>
+                    <button
+                      onClick={() => setShowReportModal(false)}
+                      className="text-slate-400 hover:text-slate-200 text-xs font-bold"
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-5 max-h-[500px] overflow-y-auto font-sans">
+                    {generatingReport ? (
+                      <div className="py-16 text-center space-y-4 flex flex-col items-center">
+                        <div className="relative w-12 h-12">
+                          <span className="absolute inset-0 rounded-full border-2 border-teal-500/10"></span>
+                          <span className="absolute inset-0 rounded-full border-2 border-t-teal-400 animate-spin"></span>
+                        </div>
+                        <p className="text-xs font-extrabold text-slate-350 tracking-wider uppercase font-mono animate-pulse">
+                          Summarizing shift logs via Gemini...
+                        </p>
+                      </div>
+                    ) : shiftReport ? (
+                      <div className="space-y-4 text-xs">
+                        {/* Overview Section */}
+                        <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4">
+                          <h3 className="font-extrabold text-[10px] text-teal-400 tracking-wider uppercase font-mono mb-1.5">
+                            Overview
+                          </h3>
+                          <p className="text-slate-300 leading-relaxed font-medium">
+                            {shiftReport.overview}
+                          </p>
+                        </div>
+
+                        {/* Incidents Section */}
+                        <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4">
+                          <h3 className="font-extrabold text-[10px] text-orange-400 tracking-wider uppercase font-mono mb-1.5">
+                            Incidents Handled
+                          </h3>
+                          <p className="text-slate-300 leading-relaxed font-medium">
+                            {shiftReport.incidents}
+                          </p>
+                        </div>
+
+                        {/* Actions Section */}
+                        <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4">
+                          <h3 className="font-extrabold text-[10px] text-slate-100 tracking-wider uppercase font-mono mb-1.5">
+                            Actions Proportions & Log
+                          </h3>
+                          <p className="text-slate-300 leading-relaxed font-medium">
+                            {shiftReport.actions}
+                          </p>
+                        </div>
+
+                        {/* Sustainability Section */}
+                        <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4">
+                          <h3 className="font-extrabold text-[10px] text-green-400 tracking-wider uppercase font-mono mb-1.5">
+                            Sustainability highlights
+                          </h3>
+                          <p className="text-slate-300 leading-relaxed font-medium">
+                            {shiftReport.sustainability}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 py-10 text-center font-bold">No report generated.</p>
+                    )}
+                  </div>
+
+                  {/* Modal Footer */}
+                  {shiftReport && !generatingReport && (
+                    <div className="bg-slate-950/40 px-6 py-4 border-t border-white/5 flex gap-2 justify-end">
+                      <button
+                        onClick={copyReportToClipboard}
+                        className="bg-slate-900 hover:bg-slate-800 text-slate-350 font-bold text-[9px] px-3.5 py-2.5 rounded-lg border border-white/5 uppercase tracking-wider transition-colors"
+                      >
+                        📋 Copy to Clipboard
+                      </button>
+                      <button
+                        onClick={downloadReportText}
+                        className="bg-teal-750 hover:bg-teal-650 text-white font-extrabold text-[9px] px-4 py-2.5 rounded-lg border border-teal-500/20 shadow-lg uppercase tracking-wider transition-colors"
+                      >
+                        📥 Download as Text
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
           <footer className="py-5 text-center border-t border-white/[0.03] text-[9px] text-slate-500 font-extrabold tracking-[0.2em] bg-slate-950/20 backdrop-blur-md relative z-10 uppercase mt-8 font-mono">
             STADIUMOS © 2026 • FIFA WORLD CUP stadium MANAGEMENT AI AGENT SYSTEM

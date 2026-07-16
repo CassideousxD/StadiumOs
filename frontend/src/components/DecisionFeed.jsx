@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function DecisionFeed({ logs, pendingActions = [], onApprove, onDismiss, prefersReduced }) {
+export default function DecisionFeed({ logs, pendingActions = [], onApprove, onDismiss, onExportLogs, prefersReduced }) {
   const [expandedLogIndex, setExpandedLogIndex] = useState(null);
 
   const getTriggerBadge = (trigger) => {
@@ -44,14 +44,26 @@ export default function DecisionFeed({ logs, pendingActions = [], onApprove, onD
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
+      {/* Header with Export Action */}
       <div className="flex justify-between items-center mb-3.5 pb-2 border-b border-white/[0.03] shrink-0">
         <h2 className="text-[10px] font-black tracking-widest text-slate-400 flex items-center gap-2 uppercase font-mono">
           <span>🧠</span> AI DECISION LOGS
         </h2>
-        <span className="text-[9px] bg-slate-950 border border-white/5 text-slate-400 px-2 py-0.5 rounded-full font-bold font-mono">
-          {logs.length} Event{logs.length !== 1 ? 's' : ''}
-        </span>
+        
+        <div className="flex items-center gap-1.5">
+          {/* EXPORT DECISION AUDIT TRAIL BUTTON */}
+          <button
+            onClick={onExportLogs}
+            className="text-[8px] font-black bg-slate-900/80 hover:bg-slate-800/85 text-teal-400 hover:text-teal-350 border border-white/5 rounded px-2.5 py-1 transition-colors uppercase font-mono tracking-wider focus-visible:ring-1 focus-visible:ring-teal-500/50"
+            title="Download full decision history as a JSON file"
+          >
+            📥 Export
+          </button>
+          
+          <span className="text-[9px] bg-slate-950 border border-white/5 text-slate-400 px-2 py-0.5 rounded-full font-bold font-mono">
+            {logs.length} Event{logs.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Feed container with ARIA Live updates */}
@@ -174,7 +186,7 @@ export default function DecisionFeed({ logs, pendingActions = [], onApprove, onD
                     {/* Log Header */}
                     <div className="flex justify-between items-start gap-4 mb-2.5">
                       <div className="space-y-1">
-                        <span className="text-[9px] text-slate-450 font-mono block">
+                        <span className="text-[9px] text-slate-455 font-mono block">
                           TICK TIME: {formatTimestamp(log.timestamp)} • UTC
                         </span>
                         
@@ -224,7 +236,7 @@ export default function DecisionFeed({ logs, pendingActions = [], onApprove, onD
                               🛠️ RUNTIME TOOL EXECUTIONS ({log.tools_called.length})
                             </h4>
                             {log.tools_called.length === 0 ? (
-                              <p className="text-[10px] text-slate-450 italic font-sans">Verify state normal. No actions triggered.</p>
+                              <p className="text-[10px] text-slate-455 italic font-sans">Verify state normal. No actions triggered.</p>
                             ) : (
                               <div className="space-y-2.5">
                                 {log.tools_called.map((tool, tIdx) => (

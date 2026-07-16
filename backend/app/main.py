@@ -368,3 +368,44 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+# --- NEW ENDPOINTS FOR DEPLOYMENT, SHIFT REPORT & EXPORT ---
+
+@app.get("/health")
+def health_check():
+    """
+    Simple health check for Render web service status verification.
+    """
+    import datetime
+    return {
+        "status": "ok",
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+
+@app.get("/api/logs/export")
+def export_logs_endpoint():
+    """
+    Export the decision logs as a JSON file download.
+    """
+    import json
+    from fastapi.responses import Response
+    logs_data = logger.get_logs()
+    json_str = json.dumps(logs_data, indent=2)
+    return Response(
+        content=json_str,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": "attachment; filename=stadium_os_decision_audit.json",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
+
+@app.post("/api/shift-report")
+def get_shift_report():
+    """
+    Generates an operations shift report from the session logs via Gemini.
+    """
+    from .agent import generate_shift_report
+    logs_data = logger.get_logs()
+    report = generate_shift_report(logs_data)
+    return report

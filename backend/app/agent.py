@@ -349,3 +349,78 @@ def run_mock_fan_agent(question: str) -> str:
         else:
             zone1 = stadium.get("zone_1", {})
             return f"Hello! The North Entrance ({zone1.get('name', 'Gate A')}) has a queue time of {zone1.get('gate_queue_time_mins', 12)} minutes with crowd density at {zone1.get('crowd_density', 45)}%."
+
+def generate_shift_report(logs: list) -> dict:
+    """
+    Sends decision logs to Gemini to generate a structured Operations Shift Report.
+    """
+    import json
+    if not is_api_key_valid():
+        return {
+            "overview": "During this shift, StadiumOS maintained continuous autonomous monitoring of all stadium zones and transit networks. Telemetry remained stable under baseline operations.",
+            "incidents": "A crowd bottleneck was detected at Gate B (South Entrance) and successfully mitigated. No other major incidents occurred.",
+            "actions": "Staff approved fan diversion routes from Gate B to Concourse East. Live bilingual safety warning broadcasts were dispatched to affected gates.",
+            "sustainability": "Optimized lighting and cooling in lower-occupancy zones, contributing to a 12% reduction in operational energy waste."
+        }
+        
+    try:
+        from google import genai
+        from google.genai import types
+        from . import config
+        
+        client = genai.Client(api_key=config.GEMINI_API_KEY)
+        
+        # Serialize last 15 logs for context
+        serialized_logs = []
+        for log in logs[-15:]:
+            serialized_logs.append({
+                "timestamp": log.get("timestamp"),
+                "trigger": log.get("trigger"),
+                "reasoning": log.get("reasoning"),
+                "category": log.get("category"),
+                "tools_called": [{
+                    "name": t.get("name"),
+                    "args": t.get("args"),
+                    "result": t.get("result")
+                } for t in log.get("tools_called", [])]
+            })
+            
+        prompt = f"""
+You are the Operations Director's Chief of Staff. Below is a list of decision logs from the last shift.
+Generate a concise, professional operations summary report in JSON format with exactly four keys:
+- "overview": a general summary of the shift's operational state (2-4 sentences).
+- "incidents": total incidents handled, and specifically identify zones that trended toward critical and were caught early using the predictive warnings (2-4 sentences).
+- "actions": actions proposed by the AI vs. actions approved/overridden by staff (2-4 sentences).
+- "sustainability": sustainability achievements or energy saving actions (like adjusting cooling, power optimization, or shuttle management) (2-4 sentences).
+
+Here are the decision logs:
+{json.dumps(serialized_logs, indent=2)}
+"""
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema={
+                    "type": "OBJECT",
+                    "properties": {
+                        "overview": {"type": "STRING"},
+                        "incidents": {"type": "STRING"},
+                        "actions": {"type": "STRING"},
+                        "sustainability": {"type": "STRING"}
+                    },
+                    "required": ["overview", "incidents", "actions", "sustainability"]
+                }
+            )
+        )
+        
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"Error generating shift report from Gemini: {e}")
+        return {
+            "overview": f"Error generating report from Gemini API: {e}",
+            "incidents": "N/A",
+            "actions": "N/A",
+            "sustainability": "N/A"
+        }

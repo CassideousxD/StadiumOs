@@ -1,5 +1,11 @@
 # StadiumOS 🏟️
 
+**Live Deployed Control Tower**: [https://stadiumos.vercel.app](https://stadiumos.vercel.app)  
+**Live Deployed Backend API**: [https://stadiumos-backend.onrender.com/health](https://stadiumos-backend.onrender.com/health)
+
+> [!IMPORTANT]
+> **Demo Wake-up Time Warning**: The backend is hosted on Render's free tier. If the application has been idle, the backend service spins down and may take **30-50 seconds** to wake up on the first load. We highly recommend clicking the Live Deployed Backend API link 1-2 minutes before your live demo to ensure the server is active.
+
 **StadiumOS** is an agentic GenAI control tower for FIFA World Cup 2026 stadium operations. It acts as an autonomous operational brain that monitors live stadium telemetry (crowd density, gate queue wait times, and shuttle/train transit statuses) and takes proactive, real-time actions using Gemini API's native function calling.
 
 ## 🎯 The Chosen Vertical: Real-time Operational Intelligence
@@ -60,6 +66,10 @@ StadiumOS splits tools into two categories:
 *   **Rate-of-Change Calculations**: Calculates the average crowd density delta per tick. This rate-of-change trend matrix is injected into the agent's prompts alongside the current snapshot.
 *   **Trajectory-Based Triggers**: If a zone is under the critical 75% limit (e.g. 68%) but rising at a rate (e.g. +4%/tick) projecting it will breach the limit within 3 ticks, the system generates a **Predictive Occupancy Alert** trigger.
 *   **Visual Log Tags**: Logs and pending cards are clearly tagged as `🔮 PREDICTIVE` (preventative foresight action) or `🚨 REACTIVE` (reacting to a current incident or breach).
+
+### 3. AI-Generated Shift Report & Decision Trail Export
+*   **Shift Report**: Clicking **"Generate Shift Report"** analyzes session logs using Gemini `gemini-2.5-flash` with structured outputs to render short operational summary paragraphs (Overview, Incidents, Actions, Sustainability Highlights) with copy-to-clipboard and text-download actions.
+*   **JSON Audit Trail**: An **"Export Log"** action extracts the exact raw log array (timestamps, parameters, results, approval categories) directly into a file download for compliance audits.
 
 ---
 
